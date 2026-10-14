@@ -33,5 +33,5 @@
 - [x] Every status has a color, visible text label and icon; keep color meanings consistent across booking, inquiry, vendor and payment areas and never use color alone.
 - [x] Responsive desktop/tablet/mobile: on narrow screens stack filters; render tables as cards/lists with key actions reachable; render calendar as agenda/list. All controls are keyboard operable, visible focus states are present, semantic HTML and screen-reader labels are used.
 - [x] All user-visible text belongs in English and Amharic dictionaries, including validation/loading/empty/error messages, status labels, notices, button labels and aria-labels. Both languages are left-to-right. One shared helper formats dates, numbers and ETB consistently. Test long Amharic labels at narrow widths.
-- [ ] README lists all routes and how to switch roles/open demo menu; states that real authorization and data isolation require a backend. Deploy public link.
+- [x] README lists all routes and how to switch roles/open demo menu; states that real authorization and data isolation require a backend. Deploy public link: https://addisvenue-kbwic4ws.manus.space.
 - [x] Project serves `/manus-routes.json` with the complete declared app page routes; synchronize it with route changes. Use pnpm-pinned dependencies with explicit lifecycle permissions. Complete diagnostics and build checks before delivery.
