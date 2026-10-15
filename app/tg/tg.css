@@ -1,0 +1,157 @@
+/* Telegram Mini App (/tg) chrome.
+   Additive only: every rule is scoped to the .tg-* classes the Mini App
+   introduces, so nothing here can affect the web app.
+   Colours and radii come from app/tokens.css. */
+
+.tg-shell {
+  min-height: 100vh;
+  min-height: var(--tg-viewport-height, 100dvh);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.tg-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: var(--tg-safe-top);
+  background: rgba(255, 255, 255, .97);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+.tg-topbar-inner { min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 5px 12px; }
+.tg-topbar .brand-lockup strong { font-size: 15px; }
+.tg-topbar-actions { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+.tg-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--tg-tap-target); min-height: var(--tg-tap-target);
+  border: 0; border-radius: 10px; background: transparent; color: #36504a;
+  text-decoration: none; cursor: pointer;
+}
+.tg-icon-btn:hover { background: var(--teal-soft); }
+.tg-locale {
+  min-height: var(--tg-tap-target); max-width: 96px;
+  border: 0; background: transparent; color: var(--ink); font-size: 12px; padding: 7px 2px;
+}
+
+/* ── Content ─────────────────────────────────────────────── */
+.tg-main {
+  flex: 1;
+  padding: 14px 14px calc(var(--tg-nav-height) + var(--tg-safe-bottom) + 18px);
+  outline: none;
+}
+.tg-shell .btn { min-height: var(--tg-tap-target); }
+.tg-shell .page-heading h1 { font-size: 26px; }
+
+/* ── Bottom navigation ───────────────────────────────────── */
+.tg-bottomnav {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-bottom: var(--tg-safe-bottom);
+  background: rgba(255, 255, 255, .98);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+.tg-navitem {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: var(--tg-nav-height);
+  color: #5b6c66; text-decoration: none;
+  font-size: 11px; font-weight: 700; text-align: center;
+}
+.tg-navitem[aria-current="page"] { color: var(--teal); background: var(--teal-soft); }
+.tg-navitem:focus-visible { outline-offset: -4px; }
+.tg-navitem span { padding-inline: 2px; overflow-wrap: anywhere; }
+
+/* ── Bottom sheet ────────────────────────────────────────── */
+.tg-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; align-items: flex-end;
+  background: rgba(12, 35, 31, .38);
+  animation: tg-fade .16s ease;
+}
+.tg-sheet {
+  width: 100%; max-width: 560px; margin-inline: auto;
+  max-height: 88dvh; display: flex; flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--tg-sheet-radius) var(--tg-sheet-radius) 0 0;
+  padding-bottom: var(--tg-safe-bottom);
+  box-shadow: 0 -10px 34px rgba(20, 38, 33, .22);
+  animation: tg-rise .2s ease;
+}
+.tg-sheet-handle { width: 42px; height: 4px; border-radius: 999px; background: #d3dcd8; margin: 9px auto 2px; flex: none; }
+.tg-sheet-head { display: flex; align-items: center; gap: 10px; padding: 4px 14px 10px; border-bottom: 1px solid var(--line); flex: none; }
+.tg-sheet-head h2 { flex: 1; margin: 0; font-size: 17px; }
+.tg-sheet-body { overflow-y: auto; overscroll-behavior: contain; padding: 2px 16px 16px; }
+.tg-sheet-foot { flex: none; padding: 10px 16px 12px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+@keyframes tg-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes tg-rise { from { transform: translateY(16px); opacity: .55 } to { transform: none; opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .tg-sheet, .tg-sheet-backdrop { animation: none } }
+
+/* ── Home ────────────────────────────────────────────────── */
+.tg-hello { margin: 0; color: var(--muted); font-size: 13px; font-weight: 700; }
+.tg-home-title { margin: 4px 0 0; font-size: 26px; line-height: 1.15; letter-spacing: -.03em; }
+.tg-searchbar { display: flex; align-items: center; gap: 8px; }
+.tg-searchbar .search-field { flex: 1; min-width: 0; }
+.tg-searchbar .field { min-height: var(--tg-tap-target); }
+.tg-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tg-toolbar .btn { flex: none; }
+.tg-chips { display: flex; gap: 8px; overflow-x: auto; padding: 3px 1px 6px; scrollbar-width: none; }
+.tg-chips::-webkit-scrollbar { display: none; }
+.tg-chip {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  min-height: var(--tg-tap-target); padding: 8px 14px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: #fff; color: #3c4f4a;
+  font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer;
+}
+.tg-chip:hover { background: #f0f5f3; }
+.tg-chip.is-active, .tg-chip[aria-pressed="true"] { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-dark); }
+.tg-chip .tg-chip-x { display: inline-flex; color: var(--teal-dark); }
+.tg-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 22px 0 10px; }
+.tg-section-head h2 { margin: 0; font-size: 18px; }
+.tg-shortcut { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.tg-shortcut strong { display: block; }
+.tg-shortcut small { display: block; color: var(--muted); font-size: 12px; }
+.tg-shortcut-arrow { margin-inline-start: auto; color: var(--teal); flex: none; }
+.tg-greeting-block { display: grid; gap: 2px; }
+.tg-shortcut-copy { min-width: 0; }
+.tg-shortcut-copy strong, .tg-shortcut-copy small { overflow-wrap: anywhere; }
+.tg-shortcut-status { display: block; margin-top: 8px; }
+
+/* ── Compact month calendar + agenda ─────────────────────── */
+.tg-calendar { display: grid; gap: 8px; }
+.tg-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tg-calendar-head strong { font-size: 15px; }
+.tg-calendar-weekdays,
+.tg-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.tg-calendar-weekdays span { text-align: center; color: var(--muted); font-size: 11px; font-weight: 700; }
+.tg-calendar-blank { min-height: var(--tg-tap-target); }
+.tg-calendar-day {
+  min-height: var(--tg-tap-target);
+  border: 1px solid transparent; border-radius: 9px;
+  background: #f1f6f2; color: #22433a;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.tg-calendar-day:hover:not(:disabled) { border-color: var(--teal); }
+.tg-calendar-day[aria-pressed="true"] { border-color: var(--teal); background: var(--teal); color: #fff; }
+.tg-calendar-day:disabled { background: #fff0ef; color: #963e39; text-decoration: line-through; cursor: not-allowed; opacity: .8; }
+.tg-agenda-title { margin: 10px 0 0; font-size: 14px; }
+.tg-agenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tg-agenda-item {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfa;
+}
+.tg-agenda-date { font-size: 13px; font-weight: 700; }
+
+/* ── Sticky primary action ───────────────────────────────── */
+.tg-sticky-spacer { height: 68px; }
+.tg-sticky-action {
+  position: fixed; inset-inline: 0; z-index: 25;
+  bottom: calc(var(--tg-nav-height) + var(--tg-safe-bottom));
+  padding: 10px 14px;
+  background: rgba(247, 247, 243, .96);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}

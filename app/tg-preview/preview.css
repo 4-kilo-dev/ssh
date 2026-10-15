@@ -1,0 +1,34 @@
+/* Desktop preview frame for the Telegram Mini App.
+   Scoped to .tgpreview-* so it cannot affect the web app or /tg itself. */
+
+.tgpreview {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px clamp(14px, 4vw, 40px) 26px;
+  background: #eef1ee;
+}
+.tgpreview-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.tgpreview-bar h1 { margin: 4px 0 0; font-size: clamp(20px, 2.4vw, 28px); letter-spacing: -.02em; }
+.tgpreview-bar .eyebrow { display: flex; align-items: center; gap: 6px; }
+.tgpreview-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tgpreview-controls .btn[aria-pressed="true"] { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-dark); }
+.tgpreview-hint { margin: 0; max-width: 92ch; color: var(--muted); font-size: 13px; }
+.tgpreview-stage { flex: 1; display: flex; justify-content: center; align-items: flex-start; min-height: 0; padding-top: 6px; }
+
+/* The bezel is a box-shadow so it adds no layout width: the iframe viewport
+   stays exactly the selected phone width, which is what makes the media
+   queries evaluate as they would on a phone. */
+.tgpreview-frame {
+  border: 0;
+  border-radius: 26px;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 10px #17211f,
+    0 0 0 11px #2b3a36,
+    0 22px 54px rgba(18, 32, 28, .3);
+}
+@media (max-width: 720px) {
+  .tgpreview-frame { box-shadow: 0 0 0 6px #17211f, 0 14px 32px rgba(18, 32, 28, .26); }
+}

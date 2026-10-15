@@ -29,6 +29,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     } else setActivationCount(next);
   }
 
+  // The Telegram Mini App (/tg) and its desktop preview frame ship their own chrome,
+  // so the web shell is skipped for both.
+  if (pathname === "/tg" || pathname.startsWith("/tg/") || pathname.startsWith("/tg-preview")) return <>{children}</>;
+
   return <div className="shell">
     <a className="skip-link" href="#main-content">{t("skipContent", locale)}</a>
     <div className="top-notice"><span className="notice-dot" aria-hidden="true" />{t("noBackend", locale)} <span>{t("noCredentials", locale)}</span></div>

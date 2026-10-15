@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/lib/nav";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Grid2X2, List, MapPin, Search, ShieldAlert, Users, X } from "lucide-react";
 import { mockVenues, type Venue } from "@/lib/mock-data";
 import { useDemo } from "@/lib/store";
@@ -10,13 +10,10 @@ import { formatDate, formatETB, formatMonthYear, formatNumber } from "@/lib/form
 import { t } from "@/lib/i18n";
 import { FormState, ListState, type FormStatus } from "@/components/StatePatterns";
 import { StatusBadge } from "@/components/StatusBadge";
+import { amenityLabel, useVenueFilters, venueTypeLabel } from "@/lib/venues";
+import { venueImage } from "@/lib/images";
 
-const sampleImages = ["/manus-storage/async-images/eUSSNvIwIoymiq3j0wTJPV/image-1.webp", "/manus-storage/async-images/eUSSNvIwIoymiq3j0wTJPV/image-2.webp", "/manus-storage/async-images/eUSSNvIwIoymiq3j0wTJPV/image-3.webp"];
-const venueTypeKeys: Record<string, string> = { "Wedding hall": "venueWeddingHall", "Garden venue": "venueGarden", "Conference space": "venueConference", "Hotel ballroom": "venueBallroom" };
-const venueTypeLabel = (value: string, locale: "en" | "am") => t(venueTypeKeys[value] || "venue", locale);
-const amenityKeys: Record<string, string> = { Parking: "amenityParking", Catering: "amenityCatering", Garden: "amenityGarden", Stage: "amenityStage", Projector: "amenityProjector", "Wi-Fi": "amenityWifi", "Accessible entry": "amenityAccessible", "Sound system": "amenitySound", "Changing room": "amenityChanging" };
-const amenityLabel = (value: string, locale: "en" | "am") => t(amenityKeys[value] || "amenityOther", locale);
-function useDemoLoading() {
+export function useDemoLoading() {
   const [loading, setLoading] = useState(true);
   useEffect(() => { const timer = window.setTimeout(() => setLoading(false), 220); return () => window.clearTimeout(timer); }, []);
   return loading;
@@ -25,11 +22,11 @@ function PageHeading({ kicker, title, description }: { kicker?: string; title: s
   const { locale } = useDemo();
   return <header className="page-heading"><div className="eyebrow">{kicker || t("homeKicker", locale)}</div><h1>{title}</h1>{description && <p>{description}</p>}</header>;
 }
-function VenueCard({ venue, index }: { venue: Venue; index: number }) {
+export function VenueCard({ venue }: { venue: Venue }) {
   const { locale } = useDemo();
   return <article className="venue-card card">
     <Link href={`/venues/${venue.id}`} className="venue-image-link" aria-label={`${t("viewDetails", locale)}: ${venue.name}`}>
-      <img className="venue-image" src={venue.photos?.[0] || sampleImages[index % sampleImages.length]} alt={`${venue.area} event venue`} loading="lazy" />
+      <img className="venue-image" src={venueImage(venue)} alt={`${venue.area} event venue`} loading="lazy" />
       <span className="photo-chip"><MapPin size={13} aria-hidden="true" />{venue.area}</span>
     </Link>
     <div className="venue-card-body">
@@ -45,25 +42,8 @@ function VenueCard({ venue, index }: { venue: Venue; index: number }) {
 export function VenueBrowser() {
   const { locale, venues, bookings } = useDemo();
   const loading = useDemoLoading();
-  const [query, setQuery] = useState("");
-  const [area, setArea] = useState("");
-  const [date, setDate] = useState("");
-  const [capacity, setCapacity] = useState("");
-  const [minimum, setMinimum] = useState("");
-  const [maximum, setMaximum] = useState("");
-  const [type, setType] = useState("");
-  const [amenity, setAmenity] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const areas = Array.from(new Set(venues.map((venue) => venue.area)));
-  const types = Array.from(new Set(venues.map((venue) => venue.type)));
-  const amenities = Array.from(new Set(venues.flatMap((venue) => venue.amenities)));
-  const filtered = venues.filter((venue) => {
-    const searchMatch = `${venue.name} ${venue.area} ${venue.type} ${venue.description}`.toLowerCase().includes(query.toLowerCase());
-    const held = date && bookings.some((booking) => booking.venueId === venue.id && booking.eventDate === date && (booking.status === "Reserved" || booking.status === "Confirmed"));
-    return searchMatch && (!area || venue.area === area) && (!date || !held) && (!capacity || venue.capacity >= Number(capacity)) && (!minimum || venue.price >= Number(minimum)) && (!maximum || venue.price <= Number(maximum)) && (!type || venue.type === type) && (!amenity || venue.amenities.includes(amenity));
-  });
-  function clear() { setQuery(""); setArea(""); setDate(""); setCapacity(""); setMinimum(""); setMaximum(""); setType(""); setAmenity(""); }
-  const hasFilter = Boolean(query || area || date || capacity || minimum || maximum || type || amenity);
+  const { query, setQuery, area, setArea, date, setDate, capacity, setCapacity, minimum, setMinimum, maximum, setMaximum, type, setType, amenity, setAmenity, areas, types, amenities, filtered, hasFilter, clear } = useVenueFilters(venues, bookings);
   return <div className="page-stack">
     <PageHeading title={t("latestVenues", locale)} description={t("homeDescription", locale)} />
     <div className="discovery-layout">
@@ -83,14 +63,15 @@ export function VenueBrowser() {
       <section className="results-section" aria-labelledby="venue-results-title">
         <div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2 id="venue-results-title">{formatNumber(filtered.length, locale)} <span className="muted">{t("venues", locale)}</span></h2></div><div className="view-toggle" role="group" aria-label={t("listView", locale)}><button type="button" aria-pressed={view === "grid"} aria-label={t("gridView", locale)} onClick={() => setView("grid")}><Grid2X2 size={17} aria-hidden="true" /></button><button type="button" aria-pressed={view === "list"} aria-label={t("listView", locale)} onClick={() => setView("list")}><List size={18} aria-hidden="true" /></button></div></div>
         <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVenues">
-          <div className={view === "grid" ? "venue-grid" : "venue-list"}>{filtered.map((venue) => <VenueCard key={venue.id} venue={venue} index={Math.max(0, venues.indexOf(venue))} />)}</div>
+          <div className={view === "grid" ? "venue-grid" : "venue-list"}>{filtered.map((venue) => <VenueCard key={venue.id} venue={venue} />)}</div>
         </ListState>
       </section>
     </div>
   </div>;
 }
 
-export function VenueDetails({ venueId }: { venueId: string }) {
+export type VenueCalendarSlotProps = { selectedDate: string; onSelectDate: (date: string) => void; heldDates: string[]; venueId: string };
+export function VenueDetails({ venueId, calendar }: { venueId: string; calendar?: (props: VenueCalendarSlotProps) => React.ReactNode }) {
   const { locale, bookings, venues, vendors, customers, contactVenueAfterDeposit } = useDemo();
   const customerName = customers.find((item) => item.id === "customer-1")?.name || "Hana Bekele";
   const router = useRouter();
@@ -102,11 +83,10 @@ export function VenueDetails({ venueId }: { venueId: string }) {
   const heldDates = bookings.filter((b) => b.venueId === venue.id && (b.status === "Reserved" || b.status === "Confirmed")).map((b) => b.eventDate);
   const depositPaid = bookings.some((b) => b.venueId === venue.id && b.customer === customerName && (b.status === "Reserved" || b.status === "Confirmed" || b.status === "Completed"));
   const canRevealContact = !contactVenueAfterDeposit || depositPaid;
-  const venueIndex = Math.max(0, venues.findIndex((item) => item.id === venue.id));
   return <div className="page-stack">
     <div className="breadcrumbs"><Link href="/venues">{t("venues", locale)}</Link><span aria-hidden="true">/</span><span>{venue.name}</span></div>
     <div className="detail-hero">
-      <img src={venue.photos?.[0] || sampleImages[venueIndex % sampleImages.length]} alt={`${venue.area} venue`} />
+      <img src={venueImage(venue)} alt={`${venue.area} venue`} />
       <div className="detail-hero-caption"><span className="eyebrow">{venueTypeLabel(venue.type, locale)}</span><h1>{venue.name}</h1><p><MapPin size={16} aria-hidden="true" />{venue.area}, Addis Ababa</p></div>
     </div>
     <div className="detail-columns">
@@ -118,7 +98,7 @@ export function VenueDetails({ venueId }: { venueId: string }) {
         <section className="card"><h2>{t("policies", locale)}</h2><p>{venue.policies || t("dateRule", locale)}</p><p>{t("maskedContact", locale)}</p></section><section className="card"><h2>{t("gallery", locale)}</h2>{venue.photos?.length ? <div className="vendor-gallery">{venue.photos.map((photo, index) => <img key={`${photo}-${index}`} src={photo} alt={`${venue.name} gallery ${index + 1}`} loading="lazy" />)}</div> : <p className="muted">{t("sampleGalleryNote", locale)}</p>}{venue.videos?.length ? <ul>{venue.videos.map((video, index) => <li key={`${video}-${index}`}><a href={video} target="_blank" rel="noreferrer">{t("videoLink", locale)} {formatNumber(index + 1, locale)}</a></li>)}</ul> : null}</section><section className="card"><h2>{t("contactInfo", locale)}</h2><p>{canRevealContact ? (venue.contact || t("sampleVenueContact", locale)) : t("contactHiddenVenue", locale)}</p></section>
         <section className="card"><h2>{t("suggestions", locale)}</h2><div className="vendor-suggestions">{vendors.filter((vendor) => vendor.status === "Active").slice(0, 3).map((vendor) => <Link className="suggested-vendor" key={vendor.id} href={`/vendors/${vendor.id}`}><span className="avatar-dot">{vendor.name.charAt(0)}</span><span><strong>{vendor.name}</strong><small>{vendor.category} · {vendor.area}</small></span><ArrowRight size={16} aria-hidden="true" /></Link>)}</div></section>
       </div>
-      <aside className="card availability-panel"><h2><CalendarDays size={18} aria-hidden="true" />{t("availability", locale)}</h2><p className="muted">{formatMonthYear(monthStart, locale)}</p><div className="date-grid" role="group" aria-label={t("availability", locale)}>{Array.from({ length: monthDays }, (_, i) => { const day = i + 1; const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`; const held = heldDates.includes(date); return <button key={date} type="button" className={`date-cell ${held ? "is-held" : ""}`} disabled={held || date < today.toISOString().slice(0, 10)} aria-label={`${formatDate(date, locale)}${held ? ` — ${t("reserved", locale)}` : ""}`} aria-pressed={selectedDate === date} onClick={() => setSelectedDate(date)}>{day}</button>; })}</div><p className="availability-legend"><span className="legend-dot open" />{t("dateOpen", locale)} <span className="legend-dot held" />{t("reserved", locale)}</p><p className="muted">{t("dateRule", locale)}</p>{selectedDate && <button type="button" className="btn btn-primary full-width" onClick={() => router.push(`/bookings/new?venue=${venue.id}&date=${selectedDate}`)}>{t("requestBooking", locale)} · {formatDate(selectedDate, locale)}</button>}
+      <aside className="card availability-panel"><h2><CalendarDays size={18} aria-hidden="true" />{t("availability", locale)}</h2>{calendar ? calendar({ selectedDate, onSelectDate: setSelectedDate, heldDates, venueId: venue.id }) : <><p className="muted">{formatMonthYear(monthStart, locale)}</p><div className="date-grid" role="group" aria-label={t("availability", locale)}>{Array.from({ length: monthDays }, (_, i) => { const day = i + 1; const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`; const held = heldDates.includes(date); return <button key={date} type="button" className={`date-cell ${held ? "is-held" : ""}`} disabled={held || date < today.toISOString().slice(0, 10)} aria-label={`${formatDate(date, locale)}${held ? ` — ${t("reserved", locale)}` : ""}`} aria-pressed={selectedDate === date} onClick={() => setSelectedDate(date)}>{day}</button>; })}</div><p className="availability-legend"><span className="legend-dot open" />{t("dateOpen", locale)} <span className="legend-dot held" />{t("reserved", locale)}</p></>}<p className="muted">{t("dateRule", locale)}</p>{selectedDate && <button type="button" className="btn btn-primary full-width" onClick={() => router.push(`/bookings/new?venue=${venue.id}&date=${selectedDate}`)}>{t("requestBooking", locale)} · {formatDate(selectedDate, locale)}</button>}
         <p className="small-note"><ShieldAlert size={14} aria-hidden="true" />{t("demoNotice", locale)}</p>
       </aside>
     </div>
@@ -166,11 +146,11 @@ export function BookingRequestForm() {
             <label className="label" htmlFor="booking-package">{t("package", locale)} <span aria-hidden="true">*</span></label><select id="booking-package" className={`field ${errors.package ? "field-error" : ""}`} value={packageName} onChange={(e) => { setPackageName(e.target.value); setErrors((v) => ({ ...v, package: "" })); }} aria-invalid={Boolean(errors.package)}>{venue.packages.map((item) => <option key={item.name} value={item.name}>{item.name} — {formatETB(item.price, locale)}</option>)}</select>{errors.package && <p className="field-error-text">{errors.package}</p>}
             <label className="label" htmlFor="booking-notes">{t("notes", locale)}</label><textarea id="booking-notes" className="field textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("notesPlaceholder", locale)} />
           </div>
-          <div className="form-actions"><Link className="btn btn-secondary" href={`/venues/${venue.id}`}>{t("cancel", locale)}</Link><button className="btn btn-primary" type="submit" disabled={status === "loading"}>{status === "loading" ? t("saving", locale) : t("submit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div>
+          <div className="form-actions"><Link className="btn btn-secondary" href={`/venues/${venue.id}`}>{t("cancel", locale)}</Link><button className="btn btn-primary" type="submit" data-tg-primary disabled={status === "loading"}>{status === "loading" ? t("saving", locale) : t("submit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div>
           <p className="small-note">{t("noBackend", locale)}</p>
         </form>
       </FormState>
-      <aside className="card booking-summary"><h2>{t("bookingSummary", locale)}</h2><img className="summary-image" src={venue.photos?.[0] || sampleImages[Math.max(0, venues.indexOf(venue)) % sampleImages.length]} alt={`${venue.area} venue`} /><h3>{venue.name}</h3><p><MapPin size={15} aria-hidden="true" />{venue.area}</p><dl><div><dt>{t("package", locale)}</dt><dd>{packageName}</dd></div><div><dt>{t("date", locale)}</dt><dd>{eventDate ? formatDate(eventDate, locale) : "—"}</dd></div><div><dt>{t("guests", locale)}</dt><dd>{guests || "—"}</dd></div><div><dt>{t("amount", locale)}</dt><dd>{formatETB(venue.packages.find((item) => item.name === packageName)?.price || venue.price, locale)}</dd></div></dl><p className="muted">{t("availabilityHint", locale)}</p></aside>
+      <aside className="card booking-summary"><h2>{t("bookingSummary", locale)}</h2><img className="summary-image" src={venueImage(venue)} alt={`${venue.area} venue`} /><h3>{venue.name}</h3><p><MapPin size={15} aria-hidden="true" />{venue.area}</p><dl><div><dt>{t("package", locale)}</dt><dd>{packageName}</dd></div><div><dt>{t("date", locale)}</dt><dd>{eventDate ? formatDate(eventDate, locale) : "—"}</dd></div><div><dt>{t("guests", locale)}</dt><dd>{guests || "—"}</dd></div><div><dt>{t("amount", locale)}</dt><dd>{formatETB(venue.packages.find((item) => item.name === packageName)?.price || venue.price, locale)}</dd></div></dl><p className="muted">{t("availabilityHint", locale)}</p></aside>
     </div>
   </div>;
 }
@@ -179,7 +159,7 @@ export function BookingSubmitted() {
   const { locale, bookings, venues } = useDemo(); const params = useSearchParams(); const router = useRouter();
   const booking = bookings.find((b) => b.id === params.get("booking"));
   return <div className="page-stack narrow-form"><div className="success-hero"><span className="success-mark"><Check size={25} aria-hidden="true" /></span><p className="eyebrow">{t("bookingSubmitted", locale)}</p><h1>{t("bookingRequest", locale)}</h1><p>{t("requested", locale)} · {booking?.id || "—"}</p></div>
-    {booking && <div className="card booking-summary"><h2>{t("bookingSummary", locale)}</h2><p>{venues.find((v) => v.id === booking.venueId)?.name}</p><p>{formatDate(booking.eventDate, locale)} · {formatNumber(booking.guests, locale)} {t("guests", locale)}</p><StatusBadge status={booking.status} locale={locale} /><p>{t("dateRule", locale)}</p><div className="form-actions"><Link className="btn btn-secondary" href="/venues">{t("venues", locale)}</Link><button className="btn btn-primary" type="button" onClick={() => router.push(`/payments/deposit?booking=${booking.id}`)}>{t("payDeposit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div></div>}
+    {booking && <div className="card booking-summary"><h2>{t("bookingSummary", locale)}</h2><p>{venues.find((v) => v.id === booking.venueId)?.name}</p><p>{formatDate(booking.eventDate, locale)} · {formatNumber(booking.guests, locale)} {t("guests", locale)}</p><StatusBadge status={booking.status} locale={locale} /><p>{t("dateRule", locale)}</p><div className="form-actions"><Link className="btn btn-secondary" href="/venues">{t("venues", locale)}</Link><button className="btn btn-primary" type="button" data-tg-primary onClick={() => router.push(`/payments/deposit?booking=${booking.id}`)}>{t("payDeposit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div></div>}
   </div>;
 }
 
@@ -213,8 +193,8 @@ export function PaymentScreen({ receiptOnly = false }: { receiptOnly?: boolean }
         {booking ? <dl className="summary-dl"><div><dt>{t("venue", locale)}</dt><dd>{venue?.name || "—"}</dd></div><div><dt>{t("date", locale)}</dt><dd>{formatDate(booking.eventDate, locale)}</dd></div><div><dt>{t("bookingStatus", locale)}</dt><dd><StatusBadge status={booking.status} locale={locale} /></dd></div><div><dt>{t("depositDue", locale)}</dt><dd>{formatETB(booking.deposit, locale)}</dd></div></dl> : <p>{t("loadError", locale)}</p>}
         {isResult && <div className={`outcome-message ${outcome === "success" ? "success-message" : outcome === "failure" ? "error-message" : "pending-message"}`} role="status">{outcome === "success" ? <Check size={18} aria-hidden="true" /> : outcome === "failure" ? <X size={18} aria-hidden="true" /> : <Clock3 size={18} aria-hidden="true" />}<p>{resultCopy || t("noTransactions", locale)}</p></div>}
         {isResult && <p className="sample-stamp">{t("sampleReceipt", locale)} · {t("sample", locale)}</p>}
-        {!isResult && <><p className="field-help">{t("paymentSelect", locale)}: <StatusBadge status={demo.paymentOutcome === "success" ? "Success" : demo.paymentOutcome === "pending" ? "Pending" : "Failure"} locale={locale} /></p><p className="muted">{t("noCredentials", locale)} {t("noTransactions", locale)}</p><div className="form-actions"><Link className="btn btn-secondary" href={`/bookings/submitted?booking=${booking?.id || ""}`}>{t("back", locale)}</Link><button type="button" className="btn btn-primary" onClick={simulate} disabled={status === "loading" || !booking}>{status === "loading" ? t("saving", locale) : t("payDeposit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div></>}
-        {isResult && <div className="form-actions">{outcome !== "success" && booking && <button className="btn btn-primary" type="button" onClick={() => router.push(`/payments/deposit?booking=${booking.id}`)}>{t("retryPayment", locale)}</button>}<Link className="btn btn-secondary" href="/my-event">{t("myEvent", locale)}</Link><Link className="btn btn-secondary" href="/venues">{t("venues", locale)}</Link></div>}
+        {!isResult && <><p className="field-help">{t("paymentSelect", locale)}: <StatusBadge status={demo.paymentOutcome === "success" ? "Success" : demo.paymentOutcome === "pending" ? "Pending" : "Failure"} locale={locale} /></p><p className="muted">{t("noCredentials", locale)} {t("noTransactions", locale)}</p><div className="form-actions"><Link className="btn btn-secondary" href={`/bookings/submitted?booking=${booking?.id || ""}`}>{t("back", locale)}</Link><button type="button" className="btn btn-primary" data-tg-primary onClick={simulate} disabled={status === "loading" || !booking}>{status === "loading" ? t("saving", locale) : t("payDeposit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div></>}
+        {isResult && <div className="form-actions">{outcome !== "success" && booking && <button className="btn btn-primary" type="button" data-tg-primary onClick={() => router.push(`/payments/deposit?booking=${booking.id}`)}>{t("retryPayment", locale)}</button>}<Link className="btn btn-secondary" href="/my-event">{t("myEvent", locale)}</Link><Link className="btn btn-secondary" href="/venues">{t("venues", locale)}</Link></div>}
       </section>
     </FormState>
     {isResult && resolvedPayment && <section className="card receipt-card"><div className="receipt-header"><h2>{t("sampleReceipt", locale)}</h2><span className="sample-stamp">{t("sample", locale)}</span></div><p>{t("demoNotice", locale)}</p><dl className="summary-dl"><div><dt>{t("booking", locale)}</dt><dd>{booking?.id}</dd></div><div><dt>{t("date", locale)}</dt><dd>{booking ? formatDate(booking.eventDate, locale) : "—"}</dd></div><div><dt>{t("paymentDate", locale)}</dt><dd>{formatDate(resolvedPayment.date, locale)}</dd></div><div><dt>{t("paymentStatus", locale)}</dt><dd><StatusBadge status={resolvedPayment.status} locale={locale} /></dd></div><div><dt>{t("amount", locale)}</dt><dd>{formatETB(resolvedPayment.amount, locale)}</dd></div></dl><p className="small-note">{t("noTransactions", locale)}</p></section>}
@@ -227,7 +207,7 @@ export function MyEventDashboard() {
   const venue = venues.find((v) => v.id === latest?.venueId);
   return <div className="page-stack"><PageHeading title={t("myEventTitle", locale)} description={t("customerDashboard", locale)} />
     <div className="stats-grid"><div className="stat-card"><span>{t("myBookings", locale)}</span><strong>{formatNumber(myBookings.length, locale)}</strong></div><div className="stat-card"><span>{t("inquiries", locale)}</span><strong>{formatNumber(myInquiries.length, locale)}</strong></div><div className="stat-card"><span>{t("payments", locale)}</span><strong>{formatNumber(payments.filter((p) => myBookings.some((b) => b.id === p.bookingId)).length, locale)}</strong></div></div>
-    {latest ? <section className="card my-event-feature"><div><p className="eyebrow">{t("recentActivity", locale)}</p><h2>{venue?.name || "—"}</h2><p><CalendarDays size={16} aria-hidden="true" />{formatDate(latest.eventDate, locale)} · {formatNumber(latest.guests, locale)} {t("guests", locale)}</p><StatusBadge status={latest.status} locale={locale} /><div className="form-actions"><Link className="btn btn-primary" href={`/my-bookings/${latest.id}`}>{t("bookingDetail", locale)}</Link><Link className="btn btn-secondary" href="/my-bookings">{t("myBookings", locale)}</Link></div></div><img src={venue?.photos?.[0] || sampleImages[Math.max(0, venues.findIndex((v) => v.id === latest.venueId)) % sampleImages.length]} alt={venue?.name || "Event venue"} /></section> : <div className="card"><h2>{t("noBookings", locale)}</h2><Link className="btn btn-primary" href="/venues">{t("exploreVenues", locale)}</Link></div>}
+    {latest ? <section className="card my-event-feature"><div><p className="eyebrow">{t("recentActivity", locale)}</p><h2>{venue?.name || "—"}</h2><p><CalendarDays size={16} aria-hidden="true" />{formatDate(latest.eventDate, locale)} · {formatNumber(latest.guests, locale)} {t("guests", locale)}</p><StatusBadge status={latest.status} locale={locale} /><div className="form-actions"><Link className="btn btn-primary" href={`/my-bookings/${latest.id}`}>{t("bookingDetail", locale)}</Link><Link className="btn btn-secondary" href="/my-bookings">{t("myBookings", locale)}</Link></div></div><img src={venueImage(venue)} alt={venue?.name || "Event venue"} /></section> : <div className="card"><h2>{t("noBookings", locale)}</h2><Link className="btn btn-primary" href="/venues">{t("exploreVenues", locale)}</Link></div>}
     <div className="link-card-grid"><Link className="card link-card" href="/my-inquiries"><strong>{t("myInquiries", locale)}</strong><ArrowRight size={17} aria-hidden="true" /></Link><Link className="card link-card" href="/my-payments"><strong>{t("payments", locale)}</strong><ArrowRight size={17} aria-hidden="true" /></Link><Link className="card link-card" href="/saved"><strong>{t("saved", locale)}</strong><ArrowRight size={17} aria-hidden="true" /></Link></div>
   </div>;
 }

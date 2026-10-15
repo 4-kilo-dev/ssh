@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="Beauty placeholder image">
+  <rect width="800" height="600" fill="#a2557a"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.30" stroke-width="12" stroke-linecap="round">
+    <path d="M288 480V312a60 60 0 0 1 120 0v168"/>
+    <path d="M368 480V348a50 50 0 0 1 100 0v132"/>
+    <path d="M240 480h320"/>
+  </g>
+  <text x="400" y="156" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="47" font-weight="700" fill="#ffffff" fill-opacity="0.95">Beauty</text>
+  <text x="400" y="552" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" letter-spacing="3" fill="#ffffff" fill-opacity="0.6">PORTFOLIO SAMPLE 3</text>
+</svg>

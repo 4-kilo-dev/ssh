@@ -1,6 +1,6 @@
 import type { Locale } from "./i18n";
 
-const intlLocale = (locale: Locale) => locale === "am" ? "am-ET-u-ca-gregory" : "en-ET-u-ca-gregory";
+export const intlLocale = (locale: Locale) => locale === "am" ? "am-ET-u-ca-gregory" : "en-ET-u-ca-gregory";
 
 export function formatNumber(value: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 0 }).format(value);

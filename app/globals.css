@@ -1,6 +1,6 @@
+@import "./tokens.css";
 @import "tailwindcss";
 
-:root { color-scheme: light; --ink:#172b2a; --muted:#64716f; --paper:#f7f7f3; --surface:#fff; --line:#dce3df; --teal:#0d5d56; --teal-dark:#084b46; --teal-soft:#e6f1ee; --success:#176c4a; --success-bg:#e9f5ee; --warning:#8a5200; --warning-bg:#fff4dc; --danger:#a23c38; --danger-bg:#fff0ef; --info:#345d94; --info-bg:#edf3fb; }
 * { box-sizing:border-box; }
 html { background:var(--paper); scroll-behavior:smooth; }
 body { margin:0; color:var(--ink); background:var(--paper); font-family:Arial,"Noto Sans Ethiopic","Noto Sans",system-ui,sans-serif; font-size:15px; line-height:1.55; }

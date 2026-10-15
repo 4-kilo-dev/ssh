@@ -1,0 +1,23 @@
+/* Shared design tokens — the single source of truth for colour.
+   Imported by app/globals.css, so the web app and the /tg Telegram Mini App
+   both read exactly the same values.
+
+   The block below was moved verbatim out of globals.css. Do not edit these
+   values in place: changing one changes both apps. */
+
+:root { color-scheme: light; --ink:#172b2a; --muted:#64716f; --paper:#f7f7f3; --surface:#fff; --line:#dce3df; --teal:#0d5d56; --teal-dark:#084b46; --teal-soft:#e6f1ee; --success:#176c4a; --success-bg:#e9f5ee; --warning:#8a5200; --warning-bg:#fff4dc; --danger:#a23c38; --danger-bg:#fff0ef; --info:#345d94; --info-bg:#edf3fb; }
+
+/* Mobile and Telegram Mini App layout values. These are additive: they are
+   only referenced from the /tg route, so they have no effect on the web app.
+   Declared in a separate block so the block above stays byte-identical. */
+
+:root {
+  --tg-nav-height: 58px;
+  --tg-tap-target: 44px;
+  --tg-sheet-radius: 18px;
+  --tg-max-width: 390px;
+  --tg-safe-top: env(safe-area-inset-top, 0px);
+  --tg-safe-right: env(safe-area-inset-right, 0px);
+  --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tg-safe-left: env(safe-area-inset-left, 0px);
+}

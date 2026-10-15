@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/lib/nav";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Bell, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, MessageCircle, Search, Settings, ShieldAlert, Star, Users } from "lucide-react";
 import type { Inquiry, Vendor } from "@/lib/mock-data";
@@ -10,12 +10,8 @@ import { formatDate, formatETB, formatNumber } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { FormState, ListState, type FormStatus } from "@/components/StatePatterns";
 import { StatusBadge } from "@/components/StatusBadge";
+import { vendorGallery, vendorImage } from "@/lib/images";
 
-const vendorImage = [
-  "/manus-storage/async-images/eUSSNvIwIoymiq3j0wTJPV/image-2.webp",
-  "/manus-storage/async-images/eUSSNvIwIoymiq3j0wTJPV/image-3.webp",
-  "/manus-storage/async-images/eUSSNvIwIoymiq3j0wTJPV/image-1.webp",
-];
 const categoryKeys: Record<string, string> = {
   Photography: "categoryPhotography", Catering: "categoryCatering", Decor: "categoryDecor",
   "Music & sound": "categoryMusic", Beauty: "categoryBeauty", Video: "categoryVideo", Flowers: "categoryFlowers",
@@ -34,11 +30,11 @@ function DemoNotice() {
   const { locale } = useDemo();
   return <div className="demo-notice" role="note"><ShieldAlert size={18} aria-hidden="true" /><div><strong>{t("demoNotice", locale)}</strong><p>{t("noTransactions", locale)} {t("noCredentials", locale)}</p></div></div>;
 }
-function VendorCard({ vendor, index }: { vendor: Vendor; index: number }) {
+function VendorCard({ vendor }: { vendor: Vendor }) {
   const { locale } = useDemo();
   return <article className="vendor-market-card card">
     <Link className="vendor-market-photo" href={`/vendors/${vendor.id}`} aria-label={`${t("viewDetails", locale)}: ${vendor.name}`}>
-      <img src={vendorImage[index % vendorImage.length]} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" />
+      <img src={vendorImage(vendor.category)} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" />
       <span className="photo-chip">{localCategory(vendor.category, locale)}</span>
     </Link>
     <div className="vendor-market-copy"><div className="card-title-row"><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2><span className="rating"><Star size={14} fill="currentColor" aria-hidden="true" />4.8</span></div>
@@ -66,7 +62,7 @@ export function CustomerVendorBrowser() {
       <button className="btn btn-secondary" type="button" onClick={() => { setQuery(""); setCategory(""); }}>{t("clearFilters", locale)}</button>
     </div>
     <section className="results-section" aria-label={t("vendors", locale)}><div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2>{formatNumber(filtered.length, locale)} {t("vendors", locale)}</h2></div></div>
-      <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVendors"><div className="vendor-market-grid">{filtered.map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}</div></ListState>
+      <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVendors"><div className="vendor-market-grid">{filtered.map((vendor) => <VendorCard key={vendor.id} vendor={vendor} />)}</div></ListState>
     </section>
   </div>;
 }
@@ -80,8 +76,8 @@ export function VendorProfile({ vendorId }: { vendorId: string }) {
   const showContact = !contactVendorAfterAcceptance || accepted;
   return <div className="page-stack">
     <div className="breadcrumbs"><Link href="/vendors">{t("vendors", locale)}</Link><span aria-hidden="true">/</span><span>{vendor.name}</span></div>
-    <div className="vendor-profile-hero card"><img src={vendorImage[(Number(vendor.id.split("-")[1]) - 1) % vendorImage.length]} alt={`${vendor.name} portfolio sample`} /><div><p className="eyebrow">{localCategory(vendor.category, locale)}</p><h1>{vendor.name}</h1><p>{vendor.description}</p><div className="vendor-card-facts"><span>{vendor.area}, Addis Ababa</span><span>{t("startingAt", locale)} <strong>{formatETB(vendor.startingPrice, locale)}</strong></span></div><div className="hero-actions"><Link className="btn btn-primary" href={`/inquiries/new?vendor=${vendor.id}`}>{t("sendInquiry", locale)}</Link><button className="btn btn-secondary" type="button" aria-pressed={isSaved} onClick={() => toggleSaved(vendor.id)}>{t(isSaved ? "removeSaved" : "saveVendor", locale)}</button></div></div></div>
-    <div className="vendor-profile-grid"><section className="card"><h2>{t("services", locale)}</h2><div className="tag-list">{vendor.services.map((service) => <span className="tag" key={service}>{service}</span>)}</div><h2 className="mt-6">{t("serviceAreasLabel", locale)}</h2><p>{vendor.area} · Addis Ababa</p><h2>{t("gallery", locale)}</h2><div className="vendor-gallery">{vendorImage.map((image, index) => <img key={image} src={image} alt={`${vendor.name} portfolio example ${index + 1}`} loading="lazy" />)}</div></section>
+    <div className="vendor-profile-hero card"><img src={vendorImage(vendor.category)} alt={`${vendor.name} portfolio sample`} /><div><p className="eyebrow">{localCategory(vendor.category, locale)}</p><h1>{vendor.name}</h1><p>{vendor.description}</p><div className="vendor-card-facts"><span>{vendor.area}, Addis Ababa</span><span>{t("startingAt", locale)} <strong>{formatETB(vendor.startingPrice, locale)}</strong></span></div><div className="hero-actions"><Link className="btn btn-primary" href={`/inquiries/new?vendor=${vendor.id}`}>{t("sendInquiry", locale)}</Link><button className="btn btn-secondary" type="button" aria-pressed={isSaved} onClick={() => toggleSaved(vendor.id)}>{t(isSaved ? "removeSaved" : "saveVendor", locale)}</button></div></div></div>
+    <div className="vendor-profile-grid"><section className="card"><h2>{t("services", locale)}</h2><div className="tag-list">{vendor.services.map((service) => <span className="tag" key={service}>{service}</span>)}</div><h2 className="mt-6">{t("serviceAreasLabel", locale)}</h2><p>{vendor.area} · Addis Ababa</p><h2>{t("gallery", locale)}</h2><div className="vendor-gallery">{vendorGallery(vendor.category).map((image, index) => <img key={image} src={image} alt={`${vendor.name} portfolio example ${index + 1}`} loading="lazy" />)}</div></section>
       <aside className="card"><h2>{t("contactInfo", locale)}</h2><p className="muted">{showContact ? (vendor.contact || t("contactDemoValue", locale)) : t("contactHiddenVendor", locale)}</p><p className="small-note"><ShieldAlert size={14} aria-hidden="true" />{t("accessNotice", locale)}</p><Link className="btn btn-primary full-width" href={`/inquiries/new?vendor=${vendor.id}`}>{t("sendInquiry", locale)}</Link></aside></div>
   </div>;
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-label="Addis Ababa placeholder image">
+  <rect width="1200" height="800" fill="#084b46"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.30" stroke-width="18" stroke-linecap="round">
+    <path d="M432 640V416a90 90 0 0 1 180 0v224"/>
+    <path d="M552 640V464a74 74 0 0 1 148 0v176"/>
+    <path d="M360 640h480"/>
+  </g>
+  <text x="600" y="208" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="71" font-weight="700" fill="#ffffff" fill-opacity="0.95">Addis Ababa</text>
+  <text x="600" y="736" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="29" letter-spacing="3" fill="#ffffff" fill-opacity="0.6">PLACEHOLDER HERO IMAGE</text>
+</svg>

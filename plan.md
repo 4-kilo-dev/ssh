@@ -48,11 +48,11 @@ Put every user-visible string—including form validation, loading/empty/error/s
 - `lib/mock-data.ts`: initial mock entities only.
 - `lib/store.tsx`: shared demo reducer/context and localStorage synchronization.
 - `lib/i18n.ts` and `lib/format.ts`: English/Amharic UI dictionaries and shared locale-aware date, month, number, and ETB formatters.
-- `public/manus-routes.json`: declared page routes kept aligned with app routes.
-- `public/brand-mark.svg`: site brand mark; generated venue imagery is served from the project asset store.
+- `public/images/`: local placeholder imagery, mapped through `lib/images.ts`.
+- `public/brand-mark.svg`: site brand mark.
 - `Dockerfile`: production Node 22 / pinned pnpm build and Next.js start process.
 - `README.md`: route inventory, demo-menu access, simulated financial behavior, and the explicit backend/security limitation.
 
 ## Dependencies, serving and delivery
 
-Use the existing Next.js App Router with TypeScript and Tailwind, Node 22, pnpm pinned in `package.json`, and the checked-in pnpm 11 lifecycle-script policy in `pnpm-workspace.yaml`. The app runs on port 3000 in Preview and serves the synchronized `/manus-routes.json`. Production uses the declared container only to serve the Next.js front end (`PORT` is honored); the managed database is disabled, and no application API, business backend, real authentication, or payment processor is used. All mutable demo records stay in browser localStorage with a deterministic reset to the original mock dataset. Run code diagnostics and clean production build checks, inspect the core flows and subsequent stages, save a canonical-main checkpoint, and explicitly publish the public demo requested by the user. No production secrets or protected credentials are required.
+Use the existing Next.js App Router with TypeScript and Tailwind, Node 22, pnpm pinned in `package.json`, and the checked-in pnpm 11 lifecycle-script policy in `pnpm-workspace.yaml`. The app runs on port 3000. Production uses the declared container only to serve the Next.js front end (`PORT` is honored); the managed database is disabled, and no application API, business backend, real authentication, or payment processor is used. All mutable demo records stay in browser localStorage with a deterministic reset to the original mock dataset. Run code diagnostics and clean production build checks, inspect the core flows and subsequent stages, save a canonical-main checkpoint, and explicitly publish the public demo requested by the user. No production secrets or protected credentials are required.
