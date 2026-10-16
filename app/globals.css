@@ -17,7 +17,7 @@ img { display:block; max-width:100%; }
 .main-content { flex:1; padding-top:36px; padding-bottom:64px; outline:none; }
 .top-notice { min-height:32px; padding:6px 18px; display:flex; justify-content:center; gap:9px; align-items:center; flex-wrap:wrap; background:#edf1ec; color:#3d504b; font-size:12px; text-align:center; }
 .notice-dot { width:7px; height:7px; border-radius:50%; background:#b76b19; }
-.site-header { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.97); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+.site-header { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.97); border-bottom:1px solid var(--line); -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px); }
 .header-inner { min-height:80px; display:flex; align-items:center; gap:26px; }
 .brand-lockup,.footer-brand-button { display:flex; align-items:center; gap:11px; flex:none; text-decoration:none; }
 .brand-lockup strong,.footer-brand-button strong { display:block; font-size:16px; letter-spacing:-.02em; }

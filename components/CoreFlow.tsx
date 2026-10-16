@@ -30,7 +30,7 @@ export function VenueCard({ venue }: { venue: Venue }) {
       <span className="photo-chip"><MapPin size={13} aria-hidden="true" />{venue.area}</span>
     </Link>
     <div className="venue-card-body">
-      <div className="card-title-row"><div><p className="eyebrow">{venueTypeLabel(venue.type, locale)}</p><h2><Link href={`/venues/${venue.id}`}>{venue.name}</Link></h2></div><span className="rating">★ {venue.rating.toFixed(1)}</span></div>
+      <div className="card-title-row"><div><p className="eyebrow">{venueTypeLabel(venue.type, locale)}</p><h2><Link href={`/venues/${venue.id}`}>{venue.name}</Link></h2></div><span className="rating">★ {Number(venue.rating ?? 0).toFixed(1)}</span></div>
       <p className="muted line-clamp-2">{venue.description}</p>
       <div className="venue-facts"><span><Users size={15} aria-hidden="true" />{formatNumber(venue.capacity, locale)} {t("guests", locale)}</span><span>{t("startingAt", locale)} <strong>{formatETB(venue.price, locale)}</strong></span></div>
       <div className="tag-list">{venue.amenities.slice(0, 3).map((amenity) => <span className="tag" key={amenity}>{amenityLabel(amenity, locale)}</span>)}</div>
@@ -63,7 +63,7 @@ export function VenueBrowser() {
       <section className="results-section" aria-labelledby="venue-results-title">
         <div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2 id="venue-results-title">{formatNumber(filtered.length, locale)} <span className="muted">{t("venues", locale)}</span></h2></div><div className="view-toggle" role="group" aria-label={t("listView", locale)}><button type="button" aria-pressed={view === "grid"} aria-label={t("gridView", locale)} onClick={() => setView("grid")}><Grid2X2 size={17} aria-hidden="true" /></button><button type="button" aria-pressed={view === "list"} aria-label={t("listView", locale)} onClick={() => setView("list")}><List size={18} aria-hidden="true" /></button></div></div>
         <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVenues">
-          <div className={view === "grid" ? "venue-grid" : "venue-list"}>{filtered.map((venue) => <VenueCard key={venue.id} venue={venue} />)}</div>
+          <div className={view === "grid" ? "venue-grid" : "venue-list"}>{filtered.map((venue, index) => <VenueCard key={`${venue.id}-${index}`} venue={venue} />)}</div>
         </ListState>
       </section>
     </div>
