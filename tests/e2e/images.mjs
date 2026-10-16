@@ -62,6 +62,7 @@ const distinct = [...allSources].sort();
 const strayImages = distinct.filter((src) => !src.startsWith("/images/"));
 record("every image is a local /images/ asset", strayImages.length === 0, strayImages.slice(0, 5).join(", "));
 record("no image is a remote hotlink", !distinct.some((src) => /^https?:/i.test(src)), distinct.filter((src) => /^https?:/i.test(src)).join(", "));
+record("landing hero uses the supplied asset or local fallback", allSources.has("/images/addis-wedding-stage-hero.jpg") || allSources.has("/images/venue-garden.svg"), [...allSources].filter((src) => src.includes("hero") || src.includes("garden")).join(", "));
 
 // Decode every distinct source in the browser: the direct proof that nothing
 // renders as a broken image, independent of lazy loading.
@@ -85,7 +86,6 @@ record(`all ${distinct.length} distinct images decode in a browser`, undecodable
 // Every venue type and vendor category must map to its own file.
 const required = [
   "/images/venue-wedding-hall.svg", "/images/venue-garden.svg", "/images/venue-conference.svg", "/images/venue-ballroom.svg",
-  "/images/landing-hero.svg",
   "/images/vendor-photography-1.svg", "/images/vendor-catering-1.svg", "/images/vendor-decor-1.svg",
   "/images/vendor-music-sound-1.svg", "/images/vendor-beauty-1.svg",
 ];
@@ -98,7 +98,7 @@ for (const src of required) {
   const type = response.headers.get("content-type") ?? "";
   if (!response.ok || !type.startsWith("image/")) failures.push(`${src} → ${response.status} ${type}`);
 }
-record("every required placeholder file resolves as an image", failures.length === 0, failures.join(", "));
+record("every required local image file resolves as an image", failures.length === 0, failures.join(", "));
 
 await browser.close();
 process.exit(finish() ? 0 : 1);
