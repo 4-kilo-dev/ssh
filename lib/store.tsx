@@ -20,7 +20,7 @@ export type DemoData = {
 type DemoContextValue = DemoData & {
   setRole: (role: DemoRole) => void; setStaffRole: (role: StaffRole) => void; setLocale: (locale: Locale) => void; setPreviewVendorId: (vendorId: string) => void;
   setPaymentOutcome: (value: DemoData["paymentOutcome"]) => void; setFeeTiming: (value: DemoData["feeTiming"]) => void;
-  setContactRules: (venue: boolean, vendor: boolean) => void; resetDemo: () => void;
+  setContactRules: (venue: boolean, vendor: boolean) => void;
   createBooking: (input: Omit<Booking, "id" | "status" | "createdAt" | "source"> & { source?: Booking["source"] }) => Booking;
   updateBooking: (booking: Booking) => void;
   simulatePayment: (bookingId: string) => { outcome: DemoData["paymentOutcome"]; payment: Payment; booking: Booking | undefined };
@@ -76,7 +76,6 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     setPaymentOutcome: (paymentOutcome) => setData((s) => ({ ...s, paymentOutcome })),
     setFeeTiming: (feeTiming) => setData((s) => ({ ...s, feeTiming })),
     setContactRules: (contactVenueAfterDeposit, contactVendorAfterAcceptance) => setData((s) => ({ ...s, contactVenueAfterDeposit, contactVendorAfterAcceptance })),
-    resetDemo: () => setData({ ...defaults, bookings: [...initialMockState.bookings], inquiries: [...initialMockState.inquiries], payments: [...initialMockState.payments], fees: [...initialMockState.fees], savedVendors: [...initialMockState.savedVendors], venues: [...initialMockState.venues], vendors: [...initialMockState.vendors], customers: [...initialMockState.customers], staffAccounts: [...mockAdminStaff], auditLog: [] }),
     createBooking: (input) => {
       const booking: Booking = { ...input, id: `BK-${Date.now()}`, status: "Requested", createdAt: new Date().toISOString().slice(0, 10), source: input.source || "Platform" };
       setData((s) => ({ ...s, bookings: [booking, ...s.bookings] }));
