@@ -65,7 +65,8 @@ mockVenues[0] = {
 };
 
 mockVenues[1] = {
-  ...mockVenues[1],
+  ...mockVenues[0],
+  id: "venue-2",
   name: "Golf Club",
   area: "Tor Hailoch",
   type: "Garden venue",
@@ -82,7 +83,8 @@ mockVenues[1] = {
 };
 
 mockVenues[2] = {
-  ...mockVenues[2],
+  ...mockVenues[0],
+  id: "venue-3",
   name: "Vibes Hotel and Spa",
   area: "22 to Megenagna",
   type: "Hotel ballroom",

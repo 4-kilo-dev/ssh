@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { useDemo } from "@/lib/store";
 import { t } from "@/lib/i18n";
 import { FormState } from "@/components/StatePatterns";
@@ -68,9 +68,6 @@ export function DemoControls() {
           <p className="muted mt-3">{t("sampleStatement", locale)} — {t("demoNotice", locale)}</p>
         </section>
       </div>
-      <section className="card reset-card"><div><h2>{t("resetData", locale)}</h2><p className="muted">{t("resetOnlyLocal", locale)}</p></div>
-        <button className="btn btn-secondary" type="button" onClick={() => save(demo.resetDemo, "resetConfirmed")}><RotateCcw size={16} aria-hidden="true" />{t("resetData", locale)}</button>
-      </section>
     </FormState>
     <section className="card help-card"><h2>{t("accessibility", locale)}</h2><p>{t("menuHidden", locale)} {t("openDemoPath", locale)} {t("activateFive", locale)} {t("menuAccessible", locale)} {t("noShortcut", locale)}</p><p>{t("localData", locale)}</p></section>
   </div>;
