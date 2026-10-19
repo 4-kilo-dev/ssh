@@ -19,6 +19,7 @@
   padding-top: var(--tg-safe-top);
   background: rgba(255, 255, 255, .97);
   border-bottom: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 .tg-topbar-inner { min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 5px 12px; }
@@ -52,6 +53,7 @@
   padding-bottom: var(--tg-safe-bottom);
   background: rgba(255, 255, 255, .98);
   border-top: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 .tg-navitem {
@@ -97,7 +99,7 @@
 .tg-searchbar .field { min-height: var(--tg-tap-target); }
 .tg-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .tg-toolbar .btn { flex: none; }
-.tg-chips { display: flex; gap: 8px; overflow-x: auto; padding: 3px 1px 6px; scrollbar-width: none; }
+.tg-chips { display: flex; gap: 8px; overflow-x: auto; padding: 3px 1px 6px;  }
 .tg-chips::-webkit-scrollbar { display: none; }
 .tg-chip {
   flex: none; display: inline-flex; align-items: center; gap: 6px;
@@ -153,6 +155,7 @@
   padding: 10px 14px;
   background: rgba(247, 247, 243, .96);
   border-top: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 

@@ -36,7 +36,7 @@ export const VENDOR_CATEGORY_IMAGES: Record<string, string[]> = {
 export const FALLBACK_VENDOR_IMAGES = ["/images/vendor-generic-1.svg", "/images/vendor-generic-2.svg", "/images/vendor-generic-3.svg"];
 
 /** Intended supplied hero asset. The landing components fall back locally if it is unavailable. */
-export const LANDING_HERO_IMAGE = "/images/landing.jpg";
+export const LANDING_HERO_IMAGE = "/images/landingtwo.jpg";
 export const FALLBACK_LANDING_HERO_IMAGE = "/images/venue-garden.svg";
 
 type VenueLike = { type?: string; photos?: string[] } | undefined | null;
