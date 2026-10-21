@@ -9,6 +9,7 @@ import { DemoControls } from "@/components/DemoControls";
 import { LandingPage } from "@/components/LandingPage";
 import { BookingRequestForm, BookingSubmitted, MyEventDashboard, PaymentScreen, VenueBrowser, VenueDetails } from "@/components/CoreFlow";
 import { CustomerInquiries, CustomerInquiryDetail, CustomerVendorBrowser, InquiryRequest, InquirySent, VendorFeeStatementDetail, VendorFeeStatements, VendorHome, VendorInquiryDetail, VendorInquiries, VendorProfile, VendorSignInPreview } from "@/components/VendorFlow";
+import { VenueDiscoveryGate } from "@/components/venues-v2/VenueDiscoveryGate";
 import { AdminWorkspace } from "@/components/AdminTools";
 import { ContactPage, CustomerBookingDetail, CustomerBookings, CustomerNotifications, CustomerPayments, CustomerProfileSetup, CustomerSavedVendors, CustomerSettings, CustomerSignIn, StaticCustomerPage } from "@/components/CustomerExtras";
 import { VendorApplicationForm, VendorApplicationStatus, VendorListingEditor, VendorListingPreview, VendorNotifications, VendorSettings } from "@/components/VendorExtras";
@@ -43,7 +44,7 @@ export function PageRouter() {
   if (pathname === "/terms") return <StaticCustomerPage page="terms" />;
   if (pathname === "/privacy") return <StaticCustomerPage page="privacy" />;
   if (pathname === "/contact") return <ContactPage />;
-  if (pathname === "/venues") return <VenueBrowser />;
+  if (pathname === "/venues") return <VenueDiscoveryGate variant="web" fallback={<VenueBrowser />} />;
   if (pieces[0] === "venues" && pieces[1]) return <VenueDetails venueId={pieces[1]} />;
   if (pathname === "/vendors") return <CustomerVendorBrowser />;
   if (pieces[0] === "vendors" && pieces[1]) return <VendorProfile vendorId={pieces[1]} />;

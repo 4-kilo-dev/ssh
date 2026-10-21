@@ -7,10 +7,16 @@ export type Customer = { id: string; name: string; phone: string; email?: string
 export type AdminStaffRole = "Super Admin" | "Venue Manager" | "Vendor Manager" | "Finance";
 export type AdminStaff = { id: string; name: string; email: string; role: AdminStaffRole; permissions: string[] };
 
+export type VenueSetting = "indoor" | "covered-outdoor" | "uncovered-outdoor";
+export type VenueAmenityKey = "catering" | "bar" | "cleanup" | "planner" | "rentals" | "getReady" | "outsideVendors" | "wifi" | "parking" | "generator";
+export type GuestBucket = "0-199" | "200-399" | "400-699" | "700-999" | "1000+";
 export type Venue = {
   id: string; name: string; area: string; type: string; capacity: number; price: number;
   description: string; amenities: string[]; packages: { name: string; price: number; description: string }[];
   rating: number; imageLabel: string; mapLink?: string; policies?: string; photos?: string[]; videos?: string[]; contact?: string;
+  // Optional discovery fields (used by the ?filters=v2 venue filters and card).
+  setting?: VenueSetting; amenityKeys?: VenueAmenityKey[]; guestBucket?: GuestBucket;
+  respondsWithin24h?: boolean; popular?: boolean; recommended?: boolean; featured?: boolean; photoCount?: number;
 };
 export type Vendor = {
   id: string; name: string; category: string; area: string; startingPrice: number;
@@ -218,6 +224,24 @@ mockVenues.push(
     photos:["/images/ras.jpg"],
   },
 );
+
+// Additive discovery fields for the ?filters=v2 venue filters and card. Existing venue fields are untouched.
+type VenueDiscoveryExtras = Pick<Venue, "setting" | "amenityKeys" | "guestBucket" | "respondsWithin24h" | "popular" | "recommended" | "featured" | "photoCount">;
+const venueDiscoveryExtras: Record<string, VenueDiscoveryExtras> = {
+  "venue-1": { setting: "indoor", amenityKeys: ["catering", "cleanup", "parking", "wifi", "generator"], guestBucket: "200-399", respondsWithin24h: true, popular: true, recommended: true, featured: false, photoCount: 8 },
+  "venue-2": { setting: "uncovered-outdoor", amenityKeys: ["cleanup", "rentals", "outsideVendors", "parking", "generator"], guestBucket: "1000+", respondsWithin24h: false, popular: true, recommended: false, featured: false, photoCount: 12 },
+  "venue-3": { setting: "indoor", amenityKeys: ["catering", "bar", "planner", "getReady", "wifi", "parking"], guestBucket: "200-399", respondsWithin24h: true, popular: false, recommended: true, featured: false, photoCount: 10 },
+  "venue-11": { setting: "indoor", amenityKeys: ["catering", "rentals", "outsideVendors", "wifi", "parking", "generator"], guestBucket: "200-399", respondsWithin24h: true, popular: false, recommended: false, featured: false, photoCount: 6 },
+  "venue-12": { setting: "indoor", amenityKeys: ["catering", "rentals", "outsideVendors", "wifi", "parking"], guestBucket: "400-699", respondsWithin24h: true, popular: true, recommended: false, featured: false, photoCount: 5 },
+  "venue-13": { setting: "indoor", amenityKeys: ["catering", "planner", "rentals", "getReady", "wifi", "parking", "generator"], guestBucket: "1000+", respondsWithin24h: false, popular: true, recommended: false, featured: false, photoCount: 9 },
+  "venue-14": { setting: "indoor", amenityKeys: ["catering", "bar", "rentals", "wifi", "parking"], guestBucket: "400-699", respondsWithin24h: true, popular: false, recommended: true, featured: false, photoCount: 7 },
+  "venue-15": { setting: "indoor", amenityKeys: ["catering", "planner", "rentals", "getReady", "wifi", "parking", "generator"], guestBucket: "1000+", respondsWithin24h: true, popular: true, recommended: true, featured: false, photoCount: 14 },
+  "venue-16": { setting: "indoor", amenityKeys: ["catering", "bar", "cleanup", "planner", "getReady", "wifi", "parking", "generator"], guestBucket: "1000+", respondsWithin24h: true, popular: false, recommended: true, featured: false, photoCount: 13 },
+  "venue-17": { setting: "covered-outdoor", amenityKeys: ["catering", "bar", "getReady", "outsideVendors", "wifi", "parking", "generator"], guestBucket: "1000+", respondsWithin24h: true, popular: true, recommended: false, featured: false, photoCount: 11 },
+  "venue-18": { setting: "covered-outdoor", amenityKeys: ["catering", "bar", "cleanup", "wifi", "parking"], guestBucket: "400-699", respondsWithin24h: false, popular: false, recommended: false, featured: false, photoCount: 6 },
+  "venue-19": { setting: "indoor", amenityKeys: ["catering", "bar", "getReady", "outsideVendors", "wifi", "parking"], guestBucket: "0-199", respondsWithin24h: false, popular: false, recommended: true, featured: false, photoCount: 5 },
+};
+mockVenues.forEach((venue) => Object.assign(venue, venueDiscoveryExtras[venue.id]));
 
 const vendorNames = ["Selam Tesfaye Events", "Abel Photo Studio", "Liya Floral Design", "Kalkidan Catering", "Dawit Sound & Light", "Mimi Bridal House", "Nati Films", "Hana Decor Studio", "Yonas Music Collective", "Bethlehem Cake Atelier", "Tinsae Event Crew", "Mekdes Beauty Lounge"];
 const categories = ["Photography", "Catering", "Decor", "Music & sound", "Beauty"];

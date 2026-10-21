@@ -12,6 +12,7 @@ import { TgHome } from "@/components/tg/TgHome";
 import { TgSignIn } from "@/components/tg/TgSignIn";
 import { TgVenueBrowser } from "@/components/tg/TgVenueBrowser";
 import { TgCalendar } from "@/components/tg/TgCalendar";
+import { VenueDiscoveryGate } from "@/components/venues-v2/VenueDiscoveryGate";
 import { TgStickyAction } from "@/components/tg/TgStickyAction";
 
 /**
@@ -39,7 +40,7 @@ export function TgPageRouter() {
   if (logical === "/profile/setup") return <CustomerProfileSetup />;
 
   // key={queryKey} re-applies ?q=/?area=/?type= when arriving from a chip or the home search.
-  if (logical === "/venues") return <TgVenueBrowser key={queryKey} />;
+  if (logical === "/venues") return <VenueDiscoveryGate variant="tg" fallback={<TgVenueBrowser key={queryKey} />} />;
   if (pieces[0] === "venues" && pieces[1]) {
     return <VenueDetails venueId={pieces[1]} calendar={(slot) => <TgCalendar {...slot} />} />;
   }
