@@ -4,111 +4,108 @@ import type { ReactNode } from "react";
 import { Search } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
-import { formatNumber } from "@/lib/format";
 import { venueTypeLabel } from "@/lib/venues";
 import {
-  AMENITY_KEYS, GUEST_BUCKETS, SETTINGS, nearbyAreas,
-  type DiscoveryFilters, type useVenueDiscoveryV2,
-} from "@/lib/venue-discovery-v2";
-import { vt } from "@/lib/venue-discovery-v2-copy";
-import styles from "./venues-v2.module.css";
+  AMENITY_TAGS, GUEST_BUCKETS, QUICK_FILTERS, SETTINGS, nearbyAreas,
+  type VenueFiltersV2Controller,
+} from "@/lib/venue-filters-v2";
+import { tv2, type V2CopyKey } from "@/lib/venue-filters-v2-copy";
+import "./venues-v2.css";
 
-type Discovery = ReturnType<typeof useVenueDiscoveryV2>;
-
-function Option({ id, checked, onChange, children, count, disabled }: {
-  id: string; checked: boolean; onChange: () => void; children: ReactNode; count?: string; disabled?: boolean;
+function Check({ id, checked, onChange, disabled, children }: {
+  id: string; checked: boolean; onChange: () => void; disabled?: boolean; children: ReactNode;
 }) {
-  return <label className={styles.option} htmlFor={id}>
+  return <label className={`v2-option${disabled ? " is-disabled" : ""}`} htmlFor={id}>
     <input id={id} type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
     <span>{children}</span>
-    {count && <span className={styles.optionCount}>{count}</span>}
   </label>;
 }
 
 /**
- * All v2 filters. Rendered inside the web sidebar and inside the /tg bottom
- * sheet. `idPrefix` keeps control ids unique and `showSearch` lets /tg keep its
- * search bar outside the sheet.
+ * All v2 filter controls. Shared by the web sidebar and the /tg bottom sheet.
+ * `idPrefix` keeps control ids unique; `showSearch` lets /tg keep its search bar
+ * outside the sheet; `touch` raises tap targets to 44px.
  */
-export function VenueFiltersV2({ locale, discovery, idPrefix, showSearch }: {
-  locale: Locale; discovery: Discovery; idPrefix: string; showSearch: boolean;
+export function VenueFiltersV2({ locale, controller, idPrefix, showSearch = false, touch = false }: {
+  locale: Locale; controller: VenueFiltersV2Controller; idPrefix: string; showSearch?: boolean; touch?: boolean;
 }) {
-  const { filters, update, toggle, areas, types, bucketCounts } = discovery;
+  const { filters, update, toggle, areas, types } = controller;
   const id = (name: string) => `${idPrefix}-${name}`;
-  const hasNearby = Boolean(filters.area) && nearbyAreas(filters.area).length > 0;
-  const quick: { key: "responds" | "popular" | "recommended"; label: string }[] = [
-    { key: "responds", label: vt("quickResponds", locale) },
-    { key: "popular", label: vt("quickPopular", locale) },
-    { key: "recommended", label: vt("quickRecommended", locale) },
-  ];
-  const set = <K extends keyof DiscoveryFilters>(key: K) => (value: DiscoveryFilters[K]) => update(key, value);
-
-  return <div className={styles.panel}>
-    {showSearch && <div className={styles.group}>
+  const canIncludeNearby = Boolean(filters.area) && nearbyAreas(filters.area).length > 0;
+  return <div className={`v2-filters${touch ? " v2-touch" : ""}`}>
+    {showSearch && <div className="v2-group">
       <label className="sr-only" htmlFor={id("search")}>{t("search", locale)}</label>
-      <div className="search-field" style={{ position: "relative" }}>
-        <Search size={16} aria-hidden="true" style={{ position: "absolute", left: 12, top: 14, zIndex: 1, color: "#6d7d77" }} />
-        <input id={id("search")} className="field" style={{ paddingLeft: 36 }} value={filters.query} onChange={(e) => set("query")(e.target.value)} placeholder={t("searchPlaceholder", locale)} />
+      <div className="v2-search">
+        <Search size={16} aria-hidden="true" />
+        <input id={id("search")} className="field" value={filters.query} onChange={(event) => update("query", event.target.value)} placeholder={t("searchPlaceholder", locale)} />
       </div>
     </div>}
 
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fVenueType", locale)}</legend>
-      <div className={styles.options}>
-        {types.map((type) => <Option key={type} id={id(`type-${type}`)} checked={filters.types.includes(type)} onChange={() => toggle("types", type)}>{venueTypeLabel(type, locale)}</Option>)}
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fVenueType", locale)}</legend>
+      <div className="v2-options">
+        {types.map((type) => <Check key={type} id={id(`type-${type}`)} checked={filters.types.includes(type)} onChange={() => toggle("types", type)}>{venueTypeLabel(type, locale)}</Check>)}
       </div>
     </fieldset>
 
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fLocation", locale)}</legend>
-      <label className="sr-only" htmlFor={id("area")}>{vt("fLocation", locale)}</label>
-      <select id={id("area")} className="field" value={filters.area} onChange={(e) => update("area", e.target.value)}>
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fLocation", locale)}</legend>
+      <label className="sr-only" htmlFor={id("area")}>{tv2("fLocation", locale)}</label>
+      <select id={id("area")} className="field" value={filters.area} onChange={(event) => update("area", event.target.value)}>
         <option value="">{t("allAreas", locale)}</option>
         {areas.map((area) => <option key={area} value={area}>{area}</option>)}
       </select>
-      <Option id={id("nearby")} checked={filters.nearby} onChange={() => update("nearby", !filters.nearby)} disabled={!hasNearby}>{vt("fIncludeNearby", locale)}</Option>
-      {!filters.area && <p className={styles.hint}>{vt("noNearby", locale)}</p>}
-    </fieldset>
-
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fDate", locale)}</legend>
-      <label className="sr-only" htmlFor={id("date")}>{vt("fDate", locale)}</label>
-      <input id={id("date")} className="field" type="date" value={filters.date} onChange={(e) => update("date", e.target.value)} />
-    </fieldset>
-
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fGuests", locale)}</legend>
-      <div className={styles.options}>
-        {GUEST_BUCKETS.map((bucket) => <Option key={bucket.key} id={id(`bucket-${bucket.key}`)} checked={filters.buckets.includes(bucket.key)} onChange={() => toggle("buckets", bucket.key)} count={formatNumber(bucketCounts[bucket.key] ?? 0, locale)}>{bucket.label}</Option>)}
+      <div className="v2-nearby">
+        <Check id={id("nearby")} checked={filters.nearby} onChange={() => update("nearby", !filters.nearby)} disabled={!canIncludeNearby}>{tv2("fIncludeNearby", locale)}</Check>
+        {!filters.area && <p className="v2-hint">{tv2("fNoNearby", locale)}</p>}
       </div>
     </fieldset>
 
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fPrice", locale)}</legend>
-      <div className={styles.pricePair}>
-        <div><label htmlFor={id("min")}>{t("minPrice", locale)}</label><input id={id("min")} className="field" type="number" min="0" inputMode="numeric" value={filters.minimum} onChange={(e) => update("minimum", e.target.value)} /></div>
-        <div><label htmlFor={id("max")}>{t("maxPrice", locale)}</label><input id={id("max")} className="field" type="number" min="0" inputMode="numeric" value={filters.maximum} onChange={(e) => update("maximum", e.target.value)} /></div>
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fDate", locale)}</legend>
+      <label className="sr-only" htmlFor={id("date")}>{tv2("fDate", locale)}</label>
+      <input id={id("date")} className="field" type="date" value={filters.date} onChange={(event) => update("date", event.target.value)} />
+    </fieldset>
+
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fGuests", locale)}</legend>
+      <div className="v2-options">
+        {GUEST_BUCKETS.map((bucket) => <Check key={bucket.key} id={id(`bucket-${bucket.key}`)} checked={filters.buckets.includes(bucket.key)} onChange={() => toggle("buckets", bucket.key)}>{bucket.key}</Check>)}
       </div>
     </fieldset>
 
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fSetting", locale)}</legend>
-      <div className={styles.options}>
-        {SETTINGS.map((setting) => <Option key={setting} id={id(`setting-${setting}`)} checked={filters.settings.includes(setting)} onChange={() => toggle("settings", setting)}>{vt(`setting_${setting}`, locale)}</Option>)}
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fPrice", locale)}</legend>
+      <div className="v2-price-pair">
+        <div>
+          <label htmlFor={id("min")}>{t("minPrice", locale)}</label>
+          <input id={id("min")} className="field" type="number" min="0" inputMode="numeric" value={filters.minimum} onChange={(event) => update("minimum", event.target.value)} />
+        </div>
+        <div>
+          <label htmlFor={id("max")}>{t("maxPrice", locale)}</label>
+          <input id={id("max")} className="field" type="number" min="0" inputMode="numeric" value={filters.maximum} onChange={(event) => update("maximum", event.target.value)} />
+        </div>
       </div>
     </fieldset>
 
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fAmenities", locale)}</legend>
-      <div className={styles.options}>
-        {AMENITY_KEYS.map((key) => <Option key={key} id={id(`amenity-${key}`)} checked={filters.amenities.includes(key)} onChange={() => toggle("amenities", key)}>{vt(`amenity_${key}`, locale)}</Option>)}
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fSetting", locale)}</legend>
+      <div className="v2-options">
+        {SETTINGS.map((setting) => <Check key={setting} id={id(`setting-${setting}`)} checked={filters.settings.includes(setting)} onChange={() => toggle("settings", setting)}>{tv2(`setting.${setting}` as V2CopyKey, locale)}</Check>)}
       </div>
     </fieldset>
 
-    <fieldset className={styles.group}>
-      <legend className={styles.legend}>{vt("fQuick", locale)}</legend>
-      <div className={styles.options}>
-        {quick.map(({ key, label }) => <Option key={key} id={id(`quick-${key}`)} checked={filters[key]} onChange={() => update(key, !filters[key])}>{label}</Option>)}
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fAmenities", locale)}</legend>
+      <div className="v2-options">
+        {AMENITY_TAGS.map((tag) => <Check key={tag} id={id(`amenity-${tag}`)} checked={filters.amenities.includes(tag)} onChange={() => toggle("amenities", tag)}>{tv2(`amenity.${tag}` as V2CopyKey, locale)}</Check>)}
+      </div>
+    </fieldset>
+
+    <fieldset className="v2-group">
+      <legend className="v2-legend">{tv2("fQuick", locale)}</legend>
+      <div className="v2-chip-row">
+        {QUICK_FILTERS.map((key) => <button key={key} className="v2-chip" type="button" aria-pressed={filters[key]} onClick={() => update(key, !filters[key])}>{tv2(`quick.${key}` as V2CopyKey, locale)}</button>)}
       </div>
     </fieldset>
   </div>;

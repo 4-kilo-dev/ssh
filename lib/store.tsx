@@ -8,7 +8,7 @@ type DemoRole = "customer" | "vendor" | "admin";
 type StaffRole = AdminStaffRole;
 export type AuditRecord = { id: string; at: string; actor: string; action: string; details: string };
 export type DemoData = {
-  bookings: Booking[]; inquiries: Inquiry[]; payments: Payment[]; fees: FeeStatement[]; savedVendors: string[];
+  bookings: Booking[]; inquiries: Inquiry[]; payments: Payment[]; fees: FeeStatement[]; savedVendors: string[]; savedVenues: string[];
   venues: Venue[]; vendors: Vendor[]; customers: Customer[]; staffAccounts: AdminStaff[]; auditLog: AuditRecord[]; categories: string[];
   commissionMode: "percentage" | "fixed"; commissionValue: number; venueCommissionOverrides: Record<string, number>;
   leadFeesByCategory: Record<string, number>; staticContent: Record<string, string>; notificationPreferences: Record<string, boolean>;
@@ -26,7 +26,7 @@ type DemoContextValue = DemoData & {
   simulatePayment: (bookingId: string) => { outcome: DemoData["paymentOutcome"]; payment: Payment; booking: Booking | undefined };
   setBookingStatus: (id: string, status: BookingStatus) => void; rescheduleBooking: (id: string, date: string) => void;
   createInquiry: (input: Omit<Inquiry, "id" | "status">) => Inquiry; setInquiryStatus: (id: string, status: InquiryStatus, response?: string, actor?: "vendor" | "admin") => void;
-  toggleSaved: (vendorId: string) => void; recordRefund: (paymentId: string) => void;
+  toggleSaved: (vendorId: string) => void; toggleSavedVenue: (venueId: string) => void; recordRefund: (paymentId: string) => void;
   saveVenue: (venue: Venue) => void; saveVendor: (vendor: Vendor) => void; removeVendor: (vendorId: string) => void; saveCustomer: (customer: Customer) => void;
   saveStaffAccount: (account: AdminStaff) => void; setFeeRecord: (id: string, status: FeeStatement["status"], amount?: number) => void;
   saveRevenueModel: (mode: DemoData["commissionMode"], value: number, overrides: Record<string, number>, leadFees: Record<string, number>) => void;
@@ -42,7 +42,7 @@ const defaults: DemoData = {
   commissionMode: "percentage", commissionValue: 10, venueCommissionOverrides: {}, leadFeesByCategory: Object.fromEntries(vendorCategories.map((category) => [category, 1000])),
   staticContent: { faq_en: "Frequently asked questions for Addis Gathering.", faq_am: "ተደጋጋሚ ጥያቄዎች።", terms_en: "Sample terms of service.", terms_am: "የአገልግሎት ውሎች ማሳያ።", privacy_en: "Sample privacy notice.", privacy_am: "የግላዊነት ማስታወቂያ ማሳያ።" },
   notificationPreferences: { booking: true, inquiry: true, payment: true, vendor: true },
-  fees: initialMockState.fees, savedVendors: initialMockState.savedVendors, locale: "en", role: "customer", previewVendorId: "vendor-1",
+  fees: initialMockState.fees, savedVendors: initialMockState.savedVendors, savedVenues: [], locale: "en", role: "customer", previewVendorId: "vendor-1",
   staffRole: "Super Admin", paymentOutcome: "success", contactVenueAfterDeposit: true,
   contactVendorAfterAcceptance: true, feeTiming: "vendor confirms",
 };
@@ -109,6 +109,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       return { ...s, inquiries: s.inquiries.map((item) => item.id === id ? { ...item, status, ...(response ? { response } : {}) } : item), fees: fee ? [fee, ...s.fees] : s.fees };
     }),
     toggleSaved: (vendorId) => setData((s) => ({ ...s, savedVendors: s.savedVendors.includes(vendorId) ? s.savedVendors.filter((id) => id !== vendorId) : [vendorId, ...s.savedVendors] })),
+    toggleSavedVenue: (venueId) => setData((s) => ({ ...s, savedVenues: (s.savedVenues ?? []).includes(venueId) ? s.savedVenues.filter((id) => id !== venueId) : [venueId, ...(s.savedVenues ?? [])] })),
     recordRefund: (paymentId) => setData((s) => { const payment = s.payments.find((item) => item.id === paymentId); if (!payment || payment.status === "Refunded") return s; const record: AuditRecord = { id: `AUD-${Date.now()}`, at: new Date().toISOString(), actor: s.staffRole, action: "auditRefundRecorded", details: `${payment.id} · ETB ${payment.amount}` }; return { ...s, payments: s.payments.map((item) => item.id === paymentId ? { ...item, status: "Refunded", kind: "Refund" } : item), auditLog: [record, ...s.auditLog] }; }),
     saveVenue: (venue) => setData((s) => ({ ...s, venues: s.venues.some((item) => item.id === venue.id) ? s.venues.map((item) => item.id === venue.id ? venue : item) : [venue, ...s.venues], auditLog: [{ id: `AUD-${Date.now()}`, at: new Date().toISOString(), actor: s.staffRole, action: "auditVenueSaved", details: venue.name }, ...s.auditLog] })),
     saveVendor: (vendor) => setData((s) => ({ ...s, vendors: s.vendors.some((item) => item.id === vendor.id) ? s.vendors.map((item) => item.id === vendor.id ? vendor : item) : [vendor, ...s.vendors], auditLog: [{ id: `AUD-${Date.now()}`, at: new Date().toISOString(), actor: s.staffRole, action: "auditVendorUpdated", details: `${vendor.name} · ${vendor.status}` }, ...s.auditLog] })),

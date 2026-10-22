@@ -403,9 +403,21 @@ tr:last-child td { border-bottom:0; }
 }
 
 /* Vendor discovery and inquiry workflows */
-.vendor-filter-panel { display:grid; grid-template-columns:minmax(220px,1.4fr) minmax(210px,1fr) auto; gap:10px 16px; align-items:end; }
-.vendor-filter-panel .label { margin:0 0 5px; }
-.vendor-filter-panel label:first-child { grid-column:1; }
+.vendor-filter-panel { display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px; padding:18px 20px; }
+.vendor-filter-panel .filter-field { display:flex; flex-direction:column; min-width:200px; }
+.vendor-filter-panel .filter-field-grow { flex:1; min-width:240px; }
+.vendor-filter-panel .label { margin:0 0 6px; color:var(--muted); }
+.vendor-filter-panel .search-field { position:relative; }
+.vendor-filter-panel .search-field > svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#6d7d77; pointer-events:none; }
+.vendor-filter-panel .search-field .field { padding-left:38px; }
+.vendor-filter-panel .vendor-filter-clear { min-height:40px; flex:none; }
+/* Card top-rated badge + save heart (venue + vendor cards) */
+.venue-image-wrap-rel { position:relative; }
+.card-toprated { position:absolute; top:10px; left:10px; z-index:1; display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.94); color:#79520a; font-size:11px; font-weight:800; white-space:nowrap; box-shadow:0 1px 4px rgba(20,38,33,.18); }
+.card-save-btn { position:absolute; top:8px; right:8px; z-index:2; display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:999px; background:rgba(255,255,255,.94); color:#9a3b4f; cursor:pointer; box-shadow:0 1px 5px rgba(20,38,33,.22); transition:transform .15s ease, background-color .15s ease; }
+.card-save-btn:hover { background:#fff; transform:scale(1.06); }
+.card-save-btn[aria-pressed="true"] { color:#d4344f; }
+.vendor-market-card, .venue-card { position:relative; }
 .vendor-market-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
 .vendor-market-card { padding:0; overflow:hidden; }
 .vendor-market-photo { display:block; height:190px; overflow:hidden; position:relative; background:#e6ede8; }
@@ -457,8 +469,8 @@ tr:last-child td { border-bottom:0; }
   .vendor-profile-hero { grid-template-columns:1fr 1fr; gap:18px; }
 }
 @media (max-width:650px) {
-  .vendor-filter-panel { grid-template-columns:1fr; }
-  .vendor-filter-panel label:first-child { grid-column:auto; }
+  .vendor-filter-panel .filter-field, .vendor-filter-panel .filter-field-grow { min-width:0; flex:1 1 100%; }
+  .vendor-filter-panel .vendor-filter-clear { width:100%; }
   .vendor-market-grid,.vendor-profile-grid,.vendor-profile-hero { grid-template-columns:1fr; }
   .vendor-profile-hero>img { min-height:220px; max-height:280px; }
   .vendor-gallery { grid-template-columns:repeat(2,minmax(0,1fr)); }
