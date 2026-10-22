@@ -3,7 +3,7 @@
 import { Link, useRouter } from "@/lib/nav";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Grid2X2, List, MapPin, Search, ShieldAlert, Users, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Grid2X2, Heart, List, MapPin, Search, ShieldAlert, Star, Users, X } from "lucide-react";
 import { mockVenues, type Venue } from "@/lib/mock-data";
 import { useDemo } from "@/lib/store";
 import { formatDate, formatETB, formatMonthYear, formatNumber } from "@/lib/format";
@@ -23,14 +23,19 @@ function PageHeading({ kicker, title, description }: { kicker?: string; title: s
   return <header className="page-heading"><div className="eyebrow">{kicker || t("homeKicker", locale)}</div><h1>{title}</h1>{description && <p>{description}</p>}</header>;
 }
 export function VenueCard({ venue }: { venue: Venue }) {
-  const { locale } = useDemo();
+  const { locale, savedVenues, toggleSavedVenue } = useDemo();
+  const isSaved = (savedVenues ?? []).includes(venue.id);
   return <article className="venue-card card">
-    <Link href={`/venues/${venue.id}`} className="venue-image-link" aria-label={`${t("viewDetails", locale)}: ${venue.name}`}>
-      <img className="venue-image" src={venueImage(venue)} alt={`${venue.area} event venue`} loading="lazy" />
-      <span className="photo-chip"><MapPin size={13} aria-hidden="true" />{venue.area}</span>
-    </Link>
+    <div className="venue-image-wrap-rel">
+      <Link href={`/venues/${venue.id}`} className="venue-image-link" aria-label={`${t("viewDetails", locale)}: ${venue.name}`}>
+        <img className="venue-image" src={venueImage(venue)} alt={`${venue.area} event venue`} loading="lazy" />
+        <span className="photo-chip"><MapPin size={13} aria-hidden="true" />{venue.area}</span>
+        <span className="card-toprated"><Star size={12} fill="currentColor" aria-hidden="true" />{t("topRated", locale)}</span>
+      </Link>
+      <button type="button" className="card-save-btn" aria-pressed={isSaved} aria-label={t(isSaved ? "removeSaved" : "saveVendor", locale)} onClick={() => toggleSavedVenue(venue.id)}><Heart size={17} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" /></button>
+    </div>
     <div className="venue-card-body">
-      <div className="card-title-row"><div><p className="eyebrow">{venueTypeLabel(venue.type, locale)}</p><h2><Link href={`/venues/${venue.id}`}>{venue.name}</Link></h2></div><span className="rating">★ {Number(venue.rating ?? 0).toFixed(1)}</span></div>
+      <div className="card-title-row"><div><p className="eyebrow">{venueTypeLabel(venue.type, locale)}</p><h2><Link href={`/venues/${venue.id}`}>{venue.name}</Link></h2></div></div>
       <p className="muted line-clamp-2">{venue.description}</p>
       <div className="venue-facts"><span><Users size={15} aria-hidden="true" />{formatNumber(venue.capacity, locale)} {t("guests", locale)}</span><span>{t("startingAt", locale)} <strong>{formatETB(venue.price, locale)}</strong></span></div>
       <div className="tag-list">{venue.amenities.slice(0, 3).map((amenity) => <span className="tag" key={amenity}>{amenityLabel(amenity, locale)}</span>)}</div>

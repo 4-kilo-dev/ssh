@@ -3,7 +3,7 @@
 import { Link, useRouter } from "@/lib/nav";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, Bell, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, MessageCircle, Search, Settings, ShieldAlert, Star, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bell, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Heart, MessageCircle, Search, Settings, ShieldAlert, Star, Users, X } from "lucide-react";
 import type { Inquiry, Vendor } from "@/lib/mock-data";
 import { useDemo } from "@/lib/store";
 import { formatDate, formatETB, formatNumber } from "@/lib/format";
@@ -31,13 +31,16 @@ function DemoNotice() {
   return <div className="demo-notice" role="note"><ShieldAlert size={18} aria-hidden="true" /><div><strong>{t("demoNotice", locale)}</strong><p>{t("noTransactions", locale)} {t("noCredentials", locale)}</p></div></div>;
 }
 function VendorCard({ vendor }: { vendor: Vendor }) {
-  const { locale } = useDemo();
+  const { locale, savedVendors, toggleSaved } = useDemo();
+  const isSaved = savedVendors.includes(vendor.id);
   return <article className="vendor-market-card card">
     <Link className="vendor-market-photo" href={`/vendors/${vendor.id}`} aria-label={`${t("viewDetails", locale)}: ${vendor.name}`}>
       <img src={vendorImage(vendor.category)} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" />
       <span className="photo-chip">{localCategory(vendor.category, locale)}</span>
+      <span className="card-toprated"><Star size={12} fill="currentColor" aria-hidden="true" />{t("topRated", locale)}</span>
     </Link>
-    <div className="vendor-market-copy"><div className="card-title-row"><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2><span className="rating"><Star size={14} fill="currentColor" aria-hidden="true" />4.8</span></div>
+    <button type="button" className="card-save-btn" aria-pressed={isSaved} aria-label={t(isSaved ? "removeSaved" : "saveVendor", locale)} onClick={() => toggleSaved(vendor.id)}><Heart size={17} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" /></button>
+    <div className="vendor-market-copy"><div className="card-title-row"><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2></div>
       <p className="muted">{vendor.description}</p><div className="vendor-card-facts"><span><Users size={15} aria-hidden="true" />{vendor.area}</span><span>{t("startingAt", locale)} <strong>{formatETB(vendor.startingPrice, locale)}</strong></span></div>
       <div className="tag-list">{vendor.services.slice(0, 2).map((service) => <span className="tag" key={service}>{service}</span>)}</div>
       <Link className="text-link" href={`/vendors/${vendor.id}`}>{t("viewDetails", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
@@ -55,11 +58,15 @@ export function CustomerVendorBrowser() {
   return <div className="page-stack">
     <Heading title={t("vendors", locale)} description={t("vendorDirectory", locale)} />
     <div className="card vendor-filter-panel">
-      <label className="label" htmlFor="vendor-search"><Search size={15} aria-hidden="true" />{t("search", locale)}</label>
-      <input id="vendor-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("vendorSearchPlaceholder", locale)} />
-      <label className="label" htmlFor="vendor-category">{t("filterByCategory", locale)}</label>
-      <select id="vendor-category" className="field" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">{t("allCategories", locale)}</option>{categories.map((value) => <option key={value} value={value}>{localCategory(value, locale)}</option>)}</select>
-      <button className="btn btn-secondary" type="button" onClick={() => { setQuery(""); setCategory(""); }}>{t("clearFilters", locale)}</button>
+      <div className="filter-field filter-field-grow">
+        <label className="label" htmlFor="vendor-search">{t("search", locale)}</label>
+        <div className="search-field"><Search size={16} aria-hidden="true" /><input id="vendor-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("vendorSearchPlaceholder", locale)} /></div>
+      </div>
+      <div className="filter-field">
+        <label className="label" htmlFor="vendor-category">{t("filterByCategory", locale)}</label>
+        <select id="vendor-category" className="field" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">{t("allCategories", locale)}</option>{categories.map((value) => <option key={value} value={value}>{localCategory(value, locale)}</option>)}</select>
+      </div>
+      {hasFilter && <button className="btn btn-secondary vendor-filter-clear" type="button" onClick={() => { setQuery(""); setCategory(""); }}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>}
     </div>
     <section className="results-section" aria-label={t("vendors", locale)}><div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2>{formatNumber(filtered.length, locale)} {t("vendors", locale)}</h2></div></div>
       <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVendors"><div className="vendor-market-grid">{filtered.map((vendor) => <VendorCard key={vendor.id} vendor={vendor} />)}</div></ListState>
