@@ -99,7 +99,7 @@ export function TgHome() {
         <Link className="text-link" href="/venues">{t("viewAllVenues", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
       </div>
       <div className="venue-grid">
-        {featured.map((venue) => <VenueCard key={venue.id} venue={venue} />)}
+        {featured.map((venue, index) => <VenueCard key={`${venue.id}-${index}`} venue={venue} />)}
       </div>
     </section>
 
