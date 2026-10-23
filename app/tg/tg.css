@@ -184,3 +184,34 @@
 .tg-home-hero{border-radius:18px}
 .tg-chip.is-active,.tg-chip[aria-pressed="true"]{background:#e6f1ee;border-color:#0d5d56;color:#084b46}
 .tg-sticky-action{background:rgba(246,248,245,.96);border-top-color:#dce7e1}
+
+/* Keep Telegram visually aligned with the main web app while preserving its
+   native top/bottom navigation and touch-first interaction patterns. */
+.tg-shell{--site-deep:#173b37;--site-muted:#687b75;--site-line:#dce7e1}
+.tg-shell .tg-main{color:var(--ink)}
+.tg-shell .page-stack{gap:28px}
+.tg-shell .page-heading h1{color:var(--site-deep);font-size:clamp(24px,2.8vw,30px);letter-spacing:-.055em}
+.tg-shell .page-heading>p:last-child{color:var(--site-muted)}
+.tg-shell .card,.tg-shell .surface,.tg-shell .tg-home-hero{border-color:var(--site-line);border-radius:16px;box-shadow:0 8px 24px rgba(27,54,45,.035)}
+.tg-shell .field{border-color:#cbdad3;border-radius:11px;background:#fff}
+.tg-shell .field:focus{border-color:var(--teal);box-shadow:0 0 0 4px rgba(13,93,86,.11)}
+.tg-shell .btn{border-radius:10px}
+.tg-shell .btn-primary{background:var(--site-deep);box-shadow:0 7px 15px rgba(23,59,55,.15)}
+.tg-shell .btn-secondary{border-color:#bdcfc7;background:#fff}
+.tg-shell .btn-secondary:hover{border-color:#94b5a8;background:#eef5f1}
+.tg-shell .venue-card,.tg-shell .vendor-market-card{border-color:var(--site-line);border-radius:16px;background:linear-gradient(145deg,#fff 0%,#f8faf7 100%);box-shadow:0 8px 24px rgba(27,54,45,.035)}
+.tg-shell .venue-card:hover,.tg-shell .vendor-market-card:hover{border-color:#a9c9bb;box-shadow:0 14px 30px rgba(27,54,45,.09)}
+.tg-shell .tg-toolbar{align-items:center;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--site-line);border-radius:15px;background:#fff}
+.tg-shell .tg-toolbar .v2-sort{flex:1;min-width:190px}
+.tg-shell .tg-toolbar .v2-sort .field{width:100%;min-width:0}
+.tg-shell .tg-sheet{border:1px solid var(--site-line);border-bottom:0}
+.tg-shell .tg-sheet-head,.tg-shell .tg-sheet-foot{border-color:var(--site-line)}
+
+@media (max-width:520px){
+  .tg-shell .page-stack{gap:22px}
+  .tg-shell .card,.tg-shell .tg-home-hero{border-radius:14px}
+  .tg-shell .tg-toolbar{align-items:stretch;gap:10px}
+  .tg-shell .tg-toolbar .btn,.tg-shell .tg-toolbar .v2-sort{width:100%}
+  .tg-shell .tg-toolbar .eyebrow{width:100%;margin:0}
+  .tg-shell .venue-card-body,.tg-shell .vendor-market-copy{padding:13px}
+}
