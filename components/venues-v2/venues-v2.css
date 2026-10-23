@@ -8,6 +8,11 @@
 .v2-group { min-width: 0; margin: 0; padding: 14px 0; border: 0; border-top: 1px solid var(--line); }
 .v2-filters > .v2-group:first-child { border-top: 0; padding-top: 0; }
 .v2-legend { padding: 0; margin: 0 0 8px; color: var(--ink); font-size: 13px; font-weight: 700; }
+.v2-collapsible > .v2-legend { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; cursor: pointer; list-style: none; }
+.v2-collapsible > .v2-legend::-webkit-details-marker { display: none; }
+.v2-collapsible > .v2-legend::after { content: "+"; color: var(--muted); font-size: 18px; font-weight: 400; line-height: 1; }
+.v2-collapsible[open] > .v2-legend { margin-bottom: 8px; }
+.v2-collapsible[open] > .v2-legend::after { content: "−"; }
 .v2-options { display: grid; gap: 2px; }
 .v2-option { display: flex; align-items: center; gap: 10px; min-height: 32px; font-size: 14px; color: var(--ink); cursor: pointer; }
 .v2-option input { flex: none; width: 17px; height: 17px; margin: 0; accent-color: var(--teal); }

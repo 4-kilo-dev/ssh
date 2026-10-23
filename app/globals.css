@@ -563,10 +563,10 @@ tr:last-child td { border-bottom:0; }
 
 @media(max-width:900px){
   .admin-area,.vendor-area{padding-top:20px}
-  /* Keep admin navigation as a left-side control rail at every width. */
-  .admin-area .admin-workspace{grid-template-columns:220px minmax(620px,1fr);gap:18px;align-items:start;min-width:858px}
-  .admin-area .admin-sidebar{position:sticky;top:104px}
-  .admin-area .admin-nav{display:grid;max-height:calc(100vh - 300px);overflow:auto}
+  .admin-area .admin-workspace{grid-template-columns:1fr;gap:18px;align-items:start;min-width:0}
+  .admin-area .admin-sidebar{position:static}
+  .admin-area .admin-nav{display:flex;max-height:none;overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+  .admin-area .admin-nav a{flex:0 0 auto;white-space:nowrap}
 }
 @media(max-width:560px){
   .admin-area,.vendor-area{padding-bottom:48px}
@@ -856,3 +856,32 @@ body { font-size: 15px; line-height: 1.5; }
 .site-wide-refresh .admin-area .admin-dashboard-columns>.card{border-top:3px solid #9bc8ba}
 .site-wide-refresh .vendor-area .card{background:linear-gradient(145deg,#fff 0%,#f8fbf9 100%)}
 .site-wide-refresh .vendor-area .dashboard-hero{border-top:4px solid #9a6410}
+
+/* Responsive discovery controls: keep the filter rail compact and swipeable
+   on small screens instead of creating a long vertical form. */
+@media (max-width:760px){
+  .site-wide-refresh .discovery-layout{gap:18px}
+  .site-wide-refresh .filter-panel{display:block;overflow:hidden;padding:16px}
+  .site-wide-refresh .filter-panel h2{margin-bottom:14px}
+  .site-wide-refresh .filter-panel .v2-filters{display:flex;gap:0;overflow-x:auto;margin-inline:-16px;padding:0 16px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .site-wide-refresh .filter-panel .v2-filters::-webkit-scrollbar{display:none}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group{flex:0 0 min(82vw,310px);margin:0;padding:0 14px;border:0;border-left:1px solid var(--site-line);scroll-snap-align:start}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:first-child{padding-top:0;border-left:0}
+  .site-wide-refresh .filter-panel>.btn{width:100%;margin-top:14px}
+  .site-wide-refresh .results-toolbar{align-items:flex-start;flex-wrap:wrap}
+  .site-wide-refresh .v2-toolbar-controls{width:100%;justify-content:stretch}
+  .site-wide-refresh .v2-sort{flex:1;min-width:0}
+  .site-wide-refresh .v2-sort .field{width:100%;min-width:0}
+  .site-wide-refresh .venue-grid,.site-wide-refresh .vendor-market-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .site-wide-refresh .venue-card-body,.site-wide-refresh .vendor-market-copy{padding:13px}
+  .site-wide-refresh .venue-card .tag-list,.site-wide-refresh .vendor-market-card .tag-list{max-height:52px;overflow:hidden}
+}
+@media (max-width:520px){
+  .site-wide-refresh .venue-grid,.site-wide-refresh .vendor-market-grid{grid-template-columns:1fr}
+  .site-wide-refresh .results-toolbar{gap:10px}
+  .site-wide-refresh .results-toolbar h2{font-size:18px}
+  .site-wide-refresh .view-toggle button{width:42px;height:40px}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group{flex-basis:min(86vw,300px)}
+  .site-wide-refresh .detail-hero{min-height:285px}
+  .site-wide-refresh .detail-hero-caption{padding:18px}
+}

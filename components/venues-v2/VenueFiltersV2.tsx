@@ -41,12 +41,12 @@ export function VenueFiltersV2({ locale, controller, idPrefix, showSearch = fals
       </div>
     </div>}
 
-    <fieldset className="v2-group">
-      <legend className="v2-legend">{tv2("fVenueType", locale)}</legend>
+    <details className="v2-group v2-collapsible">
+      <summary className="v2-legend">{tv2("fVenueType", locale)}</summary>
       <div className="v2-options">
         {types.map((type) => <Check key={type} id={id(`type-${type}`)} checked={filters.types.includes(type)} onChange={() => toggle("types", type)}>{venueTypeLabel(type, locale)}</Check>)}
       </div>
-    </fieldset>
+    </details>
 
     <fieldset className="v2-group">
       <legend className="v2-legend">{tv2("fLocation", locale)}</legend>
@@ -88,25 +88,27 @@ export function VenueFiltersV2({ locale, controller, idPrefix, showSearch = fals
       </div>
     </fieldset>
 
-    <fieldset className="v2-group">
-      <legend className="v2-legend">{tv2("fSetting", locale)}</legend>
+    <details className="v2-group v2-collapsible">
+      <summary className="v2-legend">{tv2("fSetting", locale)}</summary>
       <div className="v2-options">
         {SETTINGS.map((setting) => <Check key={setting} id={id(`setting-${setting}`)} checked={filters.settings.includes(setting)} onChange={() => toggle("settings", setting)}>{tv2(`setting.${setting}` as V2CopyKey, locale)}</Check>)}
       </div>
-    </fieldset>
+    </details>
 
-    <fieldset className="v2-group">
-      <legend className="v2-legend">{tv2("fAmenities", locale)}</legend>
-      <div className="v2-options">
-        {AMENITY_TAGS.map((tag) => <Check key={tag} id={id(`amenity-${tag}`)} checked={filters.amenities.includes(tag)} onChange={() => toggle("amenities", tag)}>{tv2(`amenity.${tag}` as V2CopyKey, locale)}</Check>)}
-      </div>
-    </fieldset>
+    <details className="v2-group v2-collapsible">
+      <summary className="v2-legend">{tv2("fAmenities", locale)}</summary>
+      <label className="sr-only" htmlFor={id("amenity")}>{tv2("fAmenities", locale)}</label>
+      <select id={id("amenity")} className="field" value={filters.amenities[0] ?? ""} onChange={(event) => update("amenities", event.target.value ? [event.target.value] : [])}>
+        <option value="">{t("all", locale)}</option>
+        {AMENITY_TAGS.map((tag) => <option key={tag} value={tag}>{tv2(`amenity.${tag}` as V2CopyKey, locale)}</option>)}
+      </select>
+    </details>
 
-    <fieldset className="v2-group">
-      <legend className="v2-legend">{tv2("fQuick", locale)}</legend>
+    <details className="v2-group v2-collapsible">
+      <summary className="v2-legend">{tv2("fQuick", locale)}</summary>
       <div className="v2-chip-row">
         {QUICK_FILTERS.map((key) => <button key={key} className="v2-chip" type="button" aria-pressed={filters[key]} onClick={() => update(key, !filters[key])}>{tv2(`quick.${key}` as V2CopyKey, locale)}</button>)}
       </div>
-    </fieldset>
+    </details>
   </div>;
 }
