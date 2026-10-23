@@ -175,3 +175,12 @@
   .tg-home-hero-image { height: 175px; }
   .tg-home-hero-copy { padding: 14px; }
 }
+
+/* Shared rebrand finish for the Mini App. */
+.tg-topbar{background:rgba(250,252,249,.95);border-bottom-color:#dce7e1;box-shadow:0 5px 18px rgba(27,54,45,.035)}
+.tg-bottomnav{background:rgba(250,252,249,.98);border-top-color:#dce7e1}
+.tg-navitem[aria-current="page"]{background:#e6f1ee;color:#084b46}
+.tg-home-hero,.tg-agenda-item,.tg-chip{border-color:#dce7e1;box-shadow:0 8px 24px rgba(27,54,45,.035)}
+.tg-home-hero{border-radius:18px}
+.tg-chip.is-active,.tg-chip[aria-pressed="true"]{background:#e6f1ee;border-color:#0d5d56;color:#084b46}
+.tg-sticky-action{background:rgba(246,248,245,.96);border-top-color:#dce7e1}

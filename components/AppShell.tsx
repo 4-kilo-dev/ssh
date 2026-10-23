@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </header>
-    <main id="main-content" className={`container main-content ${pathname.startsWith("/admin") ? "admin-area" : pathname.startsWith("/vendor") ? "vendor-area" : ""}`} tabIndex={-1}>{children}</main>
+    <main id="main-content" className={`container main-content site-wide-refresh ${pathname.startsWith("/admin") ? "admin-area" : pathname.startsWith("/vendor") ? "vendor-area" : ""}`} tabIndex={-1}>{children}</main>
     <footer className="site-footer">
       <div className="container footer-inner">
         <button type="button" className="footer-brand-button" onClick={activateFooterLogo} aria-label={t("ariaFooterLogo", locale)} aria-describedby="footer-logo-help">
