@@ -3,7 +3,7 @@
 import { Link, useRouter } from "@/lib/nav";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, Bell, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Heart, MessageCircle, Search, Settings, ShieldAlert, Star, Users, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bell, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Heart, MessageCircle, Search, Settings, ShieldAlert, SlidersHorizontal, Star, Users, X } from "lucide-react";
 import type { Inquiry, Vendor } from "@/lib/mock-data";
 import { useDemo } from "@/lib/store";
 import { formatDate, formatETB, formatNumber } from "@/lib/format";
@@ -11,6 +11,7 @@ import { t } from "@/lib/i18n";
 import { FormState, ListState, type FormStatus } from "@/components/StatePatterns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { vendorGallery, vendorImage } from "@/lib/images";
+import "./venues-v2/venues-v2.css";
 
 const categoryKeys: Record<string, string> = {
   Photography: "categoryPhotography", Catering: "categoryCatering", Decor: "categoryDecor",
@@ -53,24 +54,40 @@ export function CustomerVendorBrowser() {
   const loading = useListLoading();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const filtered = vendors.filter((vendor) => vendor.status === "Active" && (!category || vendor.category === category) && `${vendor.name} ${vendor.category} ${vendor.area} ${vendor.services.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
-  const hasFilter = Boolean(query || category);
+  const [area, setArea] = useState("");
+  const [service, setService] = useState("");
+  const [minimum, setMinimum] = useState("");
+  const [maximum, setMaximum] = useState("");
+  const areas = Array.from(new Set(vendors.map((vendor) => vendor.area))).sort();
+  const services = Array.from(new Set(vendors.flatMap((vendor) => vendor.services))).sort();
+  const filtered = vendors.filter((vendor) => {
+    const matchesSearch = `${vendor.name} ${vendor.category} ${vendor.area} ${vendor.services.join(" ")}`.toLowerCase().includes(query.toLowerCase());
+    const matchesPrice = (!minimum || vendor.startingPrice >= Number(minimum)) && (!maximum || vendor.startingPrice <= Number(maximum));
+    return vendor.status === "Active" && matchesSearch && (!category || vendor.category === category) && (!area || vendor.area === area) && (!service || vendor.services.includes(service)) && matchesPrice;
+  });
+  const hasFilter = Boolean(query || category || area || service || minimum || maximum);
+  function clearFilters() { setQuery(""); setCategory(""); setArea(""); setService(""); setMinimum(""); setMaximum(""); }
   return <div className="page-stack">
     <Heading title={t("vendors", locale)} description={t("vendorDirectory", locale)} />
-    <div className="card vendor-filter-panel">
-      <div className="filter-field filter-field-grow">
-        <label className="label" htmlFor="vendor-search">{t("search", locale)}</label>
-        <div className="search-field"><Search size={16} aria-hidden="true" /><input id="vendor-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("vendorSearchPlaceholder", locale)} /></div>
-      </div>
-      <div className="filter-field">
-        <label className="label" htmlFor="vendor-category">{t("filterByCategory", locale)}</label>
-        <select id="vendor-category" className="field" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">{t("allCategories", locale)}</option>{categories.map((value) => <option key={value} value={value}>{localCategory(value, locale)}</option>)}</select>
-      </div>
-      {hasFilter && <button className="btn btn-secondary vendor-filter-clear" type="button" onClick={() => { setQuery(""); setCategory(""); }}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>}
+    <div className="discovery-layout vendor-discovery-layout">
+      <aside className="card" aria-label={t("ariaFilters", locale)}>
+        <h2 className="v2-filters-title"><SlidersHorizontal size={18} aria-hidden="true" />{t("filters", locale)}</h2>
+        <div className="v2-filters">
+          <div className="v2-group">
+            <label className="label" htmlFor="vendor-search">{t("search", locale)}</label>
+            <div className="v2-search"><Search size={16} aria-hidden="true" /><input id="vendor-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("vendorSearchPlaceholder", locale)} /></div>
+          </div>
+          <fieldset className="v2-group"><legend className="v2-legend">{t("filterByCategory", locale)}</legend><select id="vendor-category" className="field" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">{t("allCategories", locale)}</option>{categories.map((value) => <option key={value} value={value}>{localCategory(value, locale)}</option>)}</select></fieldset>
+          <fieldset className="v2-group"><legend className="v2-legend">{t("allAreas", locale)}</legend><select id="vendor-area" className="field" value={area} onChange={(event) => setArea(event.target.value)}><option value="">{t("allAreas", locale)}</option>{areas.map((value) => <option key={value} value={value}>{value}</option>)}</select></fieldset>
+          <fieldset className="v2-group"><legend className="v2-legend">{t("services", locale)}</legend><select id="vendor-service" className="field" value={service} onChange={(event) => setService(event.target.value)}><option value="">{t("services", locale)}</option>{services.map((value) => <option key={value} value={value}>{value}</option>)}</select></fieldset>
+          <fieldset className="v2-group"><legend className="v2-legend">{t("priceRange", locale)}</legend><div className="v2-price-pair"><label htmlFor="vendor-min-price">{t("minPrice", locale)}<input id="vendor-min-price" className="field" type="number" min="0" value={minimum} onChange={(event) => setMinimum(event.target.value)} placeholder={t("minPrice", locale)} /></label><label htmlFor="vendor-max-price">{t("maxPrice", locale)}<input id="vendor-max-price" className="field" type="number" min="0" value={maximum} onChange={(event) => setMaximum(event.target.value)} placeholder={t("maxPrice", locale)} /></label></div></fieldset>
+        </div>
+        <button className="btn btn-secondary full-width v2-clear" type="button" onClick={clearFilters}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>
+      </aside>
+      <section className="results-section" aria-label={t("vendors", locale)}><div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2>{formatNumber(filtered.length, locale)} {t("vendors", locale)}</h2></div></div>
+        <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVendors"><div className="vendor-market-grid">{filtered.map((vendor) => <VendorCard key={vendor.id} vendor={vendor} />)}</div></ListState>
+      </section>
     </div>
-    <section className="results-section" aria-label={t("vendors", locale)}><div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2>{formatNumber(filtered.length, locale)} {t("vendors", locale)}</h2></div></div>
-      <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVendors"><div className="vendor-market-grid">{filtered.map((vendor) => <VendorCard key={vendor.id} vendor={vendor} />)}</div></ListState>
-    </section>
   </div>;
 }
 
