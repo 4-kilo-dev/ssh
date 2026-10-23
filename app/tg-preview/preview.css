@@ -29,6 +29,9 @@
     0 0 0 11px #2b3a36,
     0 22px 54px rgba(18, 32, 28, .3);
 }
+
+.tgpreview{background:#f1f5f1}
+.tgpreview-frame{box-shadow:0 0 0 10px #173b37,0 0 0 11px #2b4f47,0 22px 54px rgba(18,32,28,.24)}
 @media (max-width: 720px) {
   .tgpreview-frame { box-shadow: 0 0 0 6px #17211f, 0 14px 32px rgba(18, 32, 28, .26); }
 }
