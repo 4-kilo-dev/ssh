@@ -840,3 +840,19 @@ body { font-size: 15px; line-height: 1.5; }
   .site-wide-refresh .my-event-feature{grid-template-columns:1fr;padding:16px;gap:18px}
   .site-wide-refresh .my-event-feature img{height:185px;order:-1}
 }
+
+/* Card color accents — quiet enough for content, distinct enough to create hierarchy. */
+.site-wide-refresh .card{background:linear-gradient(145deg,#fff 0%,#fbfdfb 100%)}
+.site-wide-refresh .stat-card{border-top:3px solid #9bc8ba;background:linear-gradient(145deg,#f4faf6 0%,#fff 72%)}
+.site-wide-refresh .quick-link,.site-wide-refresh .link-card{background:linear-gradient(145deg,#f4faf6 0%,#fff 80%)}
+.site-wide-refresh .vendor-market-card{background:linear-gradient(145deg,#fff 0%,#f7fbf8 100%)}
+.site-wide-refresh .venue-card{background:linear-gradient(145deg,#fff 0%,#f8faf7 100%)}
+.site-wide-refresh .featured-card{background:linear-gradient(145deg,#fff 0%,#fbf7ed 100%)}
+.site-wide-refresh .agenda-item{background:linear-gradient(145deg,#fff 0%,#f6faf7 100%)}
+.site-wide-refresh .my-event-feature{border-top:4px solid #0d5d56;background:linear-gradient(120deg,#edf7f1 0%,#fff 62%,#fbf3df 100%)}
+.site-wide-refresh .my-event-feature .eyebrow{color:#0d5d56}
+.site-wide-refresh .admin-area .card{background:linear-gradient(145deg,#fff 0%,#f8fbf9 100%)}
+.site-wide-refresh .admin-area .stat-card{background:linear-gradient(145deg,#f0f8f4 0%,#fff 72%)}
+.site-wide-refresh .admin-area .admin-dashboard-columns>.card{border-top:3px solid #9bc8ba}
+.site-wide-refresh .vendor-area .card{background:linear-gradient(145deg,#fff 0%,#f8fbf9 100%)}
+.site-wide-refresh .vendor-area .dashboard-hero{border-top:4px solid #9a6410}

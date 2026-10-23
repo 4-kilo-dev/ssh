@@ -10,8 +10,12 @@ import { formatDate, formatETB, formatMonthYear, formatNumber } from "@/lib/form
 import { t } from "@/lib/i18n";
 import { FormState, ListState, type FormStatus } from "@/components/StatePatterns";
 import { StatusBadge } from "@/components/StatusBadge";
-import { amenityLabel, useVenueFilters, venueTypeLabel } from "@/lib/venues";
+import { amenityLabel, venueTypeLabel } from "@/lib/venues";
+import { useVenueFiltersV2, type SortKey } from "@/lib/venue-filters-v2";
+import { tv2, type V2CopyKey } from "@/lib/venue-filters-v2-copy";
+import { VenueFiltersV2 } from "@/components/venues-v2/VenueFiltersV2";
 import { venueImage } from "@/lib/images";
+import "./venues-v2/venues-v2.css";
 
 export function useDemoLoading() {
   const [loading, setLoading] = useState(true);
@@ -48,27 +52,20 @@ export function VenueBrowser() {
   const { locale, venues, bookings } = useDemo();
   const loading = useDemoLoading();
   const [view, setView] = useState<"grid" | "list">("grid");
-  const { query, setQuery, area, setArea, date, setDate, capacity, setCapacity, minimum, setMinimum, maximum, setMaximum, type, setType, amenity, setAmenity, areas, types, amenities, filtered, hasFilter, clear } = useVenueFilters(venues, bookings);
+  const controller = useVenueFiltersV2(venues, bookings);
+  const { results, activeCount, clear, sort, setSort } = controller;
   return <div className="page-stack">
     <PageHeading title={t("latestVenues", locale)} description={t("homeDescription", locale)} />
     <div className="discovery-layout">
       <aside className="filter-panel card" aria-label={t("ariaFilters", locale)}>
         <h2><Search size={18} aria-hidden="true" />{t("filters", locale)}</h2>
-        <label className="label" htmlFor="venue-search">{t("search", locale)}</label>
-        <div className="search-field"><Search size={16} aria-hidden="true" /><input id="venue-search" className="field" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchPlaceholder", locale)} /></div>
-        <label className="label" htmlFor="filter-area">{t("filterByArea", locale)}</label>
-        <select id="filter-area" className="field" value={area} onChange={(e) => setArea(e.target.value)}><option value="">{t("allAreas", locale)}</option>{areas.map((value) => <option key={value}>{value}</option>)}</select>
-        <label className="label" htmlFor="filter-date">{t("filterByDate", locale)}</label><input id="filter-date" className="field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <label className="label" htmlFor="filter-capacity">{t("filterByCapacity", locale)}</label><input id="filter-capacity" className="field" type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder={t("minCapacity", locale)} />
-        <div className="field-pair"><div><label className="label" htmlFor="filter-min">{t("minPrice", locale)}</label><input id="filter-min" className="field" type="number" min="0" value={minimum} onChange={(e) => setMinimum(e.target.value)} /></div><div><label className="label" htmlFor="filter-max">{t("maxPrice", locale)}</label><input id="filter-max" className="field" type="number" min="0" value={maximum} onChange={(e) => setMaximum(e.target.value)} /></div></div>
-        <label className="label" htmlFor="filter-type">{t("filterByType", locale)}</label><select id="filter-type" className="field" value={type} onChange={(e) => setType(e.target.value)}><option value="">{t("allTypes", locale)}</option>{types.map((value) => <option key={value} value={value}>{venueTypeLabel(value, locale)}</option>)}</select>
-        <label className="label" htmlFor="filter-amenity">{t("filterByAmenities", locale)}</label><select id="filter-amenity" className="field" value={amenity} onChange={(e) => setAmenity(e.target.value)}><option value="">{t("all", locale)}</option>{amenities.map((value) => <option key={value} value={value}>{amenityLabel(value, locale)}</option>)}</select>
+        <VenueFiltersV2 locale={locale} controller={controller} idPrefix="venue" showSearch />
         <button className="btn btn-secondary full-width" type="button" onClick={clear}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>
       </aside>
       <section className="results-section" aria-labelledby="venue-results-title">
-        <div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2 id="venue-results-title">{formatNumber(filtered.length, locale)} <span className="muted">{t("venues", locale)}</span></h2></div><div className="view-toggle" role="group" aria-label={t("listView", locale)}><button type="button" aria-pressed={view === "grid"} aria-label={t("gridView", locale)} onClick={() => setView("grid")}><Grid2X2 size={17} aria-hidden="true" /></button><button type="button" aria-pressed={view === "list"} aria-label={t("listView", locale)} onClick={() => setView("list")}><List size={18} aria-hidden="true" /></button></div></div>
-        <ListState locale={locale} items={filtered.length} loading={loading} noResults={hasFilter} emptyKey="emptyVenues">
-          <div className={view === "grid" ? "venue-grid" : "venue-list"}>{filtered.map((venue, index) => <VenueCard key={`${venue.id}-${index}`} venue={venue} />)}</div>
+        <div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2 id="venue-results-title">{formatNumber(results.length, locale)} <span className="muted">{t("venues", locale)}</span></h2></div><div className="v2-toolbar-controls"><div className="v2-sort"><label htmlFor="venue-sort">{tv2("fSort", locale)}</label><select id="venue-sort" className="field" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>{(["recommended", "priceLow", "priceHigh", "capacityHigh", "capacityLow"] as SortKey[]).map((key) => <option key={key} value={key}>{tv2(`sort.${key}` as V2CopyKey, locale)}</option>)}</select></div><div className="view-toggle" role="group" aria-label={t("listView", locale)}><button type="button" aria-pressed={view === "grid"} aria-label={t("gridView", locale)} onClick={() => setView("grid")}><Grid2X2 size={17} aria-hidden="true" /></button><button type="button" aria-pressed={view === "list"} aria-label={t("listView", locale)} onClick={() => setView("list")}><List size={18} aria-hidden="true" /></button></div></div></div>
+        <ListState locale={locale} items={results.length} loading={loading} noResults={activeCount > 0} emptyKey="emptyVenues">
+          <div className={view === "grid" ? "venue-grid" : "venue-list"}>{results.map((venue, index) => <VenueCard key={`${venue.id}-${index}`} venue={venue} />)}</div>
         </ListState>
       </section>
     </div>
