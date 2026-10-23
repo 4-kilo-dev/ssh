@@ -40,7 +40,7 @@ img { display:block; max-width:100%; }
 .page-heading { max-width:780px; }
 .page-heading h1 { margin:7px 0 8px; font-size:clamp(28px,4vw,42px); line-height:1.12; letter-spacing:-.035em; }
 .page-heading p { margin:0; max-width:700px; color:var(--muted); font-size:16px; }
-.eyebrow { display:flex; align-items:center; gap:7px; margin:0; color:#57726a; font-size:11px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.eyebrow { display:flex; align-items:center; gap:7px; margin:0; color:#57726a; font-size:11px; font-weight:700; letter-spacing:normal; text-transform:none; }
 .muted { color:var(--muted); }
 .surface,.card { background:var(--surface); border:1px solid var(--line); border-radius:14px; }
 .card { padding:20px; }
@@ -489,6 +489,92 @@ tr:last-child td { border-bottom:0; }
 @media(max-width:700px){.admin-month-view{display:none}.admin-calendar-agenda{display:block}.admin-calendar-agenda h2{font-size:18px}.admin-workspace{gap:10px}.admin-sidebar{padding:8px}.admin-sidebar-heading small{max-width:55vw;overflow-wrap:anywhere}.admin-nav a{font-size:12px;padding:7px 8px}.admin-content>.page-stack{gap:17px}.admin-record{align-items:flex-start;flex-direction:column}.admin-record-actions{justify-content:flex-start;width:100%}.admin-form-grid{grid-template-columns:1fr}.admin-form-full{grid-column:auto}.admin-list-toolbar{align-items:stretch}.admin-list-toolbar>.field{width:100%;min-width:0}.admin-fee-row{grid-template-columns:1fr}.admin-fee-actions{justify-content:flex-start}.admin-category-fees{grid-template-columns:1fr}.report-filters{grid-template-columns:1fr}.calendar-toolbar{align-items:stretch}.calendar-toolbar>.field,.month-controls{width:100%;min-width:0}.month-controls .btn{padding:7px 8px;font-size:11px}.detail-list{grid-template-columns:1fr}.package-edit-row{grid-template-columns:1fr}.package-edit-row input:last-child{grid-column:auto}.admin-content .responsive-table table,.admin-content .responsive-table thead,.admin-content .responsive-table tbody,.admin-content .responsive-table tr,.admin-content .responsive-table td{display:block;width:100%}.admin-content .responsive-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.admin-content .responsive-table tr{padding:9px 0;border-bottom:1px solid var(--line)}.admin-content .responsive-table td{display:grid;grid-template-columns:minmax(90px,35%) minmax(0,1fr);gap:10px;border:0;padding:6px 4px}.admin-content .responsive-table td::before{content:attr(data-label);font-size:11px;color:var(--muted);font-weight:700}.month-grid{min-width:800px}}
 @media print{.site-header,.site-footer,.admin-sidebar,.report-actions,.btn{display:none!important}.admin-workspace{display:block}.main-content{width:100%;padding:0}.card{break-inside:avoid}}
 
+/* Operations console refresh — intentionally scoped to admin and vendor routes.
+   Public discovery, venue, and customer surfaces keep their existing treatment. */
+.admin-area,.vendor-area{--ops-ink:#18312f;--ops-muted:#70817c;--ops-line:#dfe7e2;--ops-paper:#f5f7f3}
+.admin-area{max-width:1320px;padding-top:28px;padding-bottom:80px}
+.admin-area .admin-workspace{grid-template-columns:252px minmax(0,1fr);gap:30px;min-height:calc(100vh - 240px)}
+.admin-area .admin-sidebar{top:104px;gap:18px;padding:18px 12px;border:1px solid var(--ops-line);border-radius:20px;background:linear-gradient(180deg,#fff 0%,#f9fbf8 100%);box-shadow:0 16px 36px rgba(27,54,45,.06)}
+.admin-area .admin-sidebar-heading{padding:2px 8px 17px;border-color:var(--ops-line)}
+.admin-area .admin-sidebar-mark{width:40px;height:40px;border:0;border-radius:13px 13px 5px 13px;background:var(--teal);color:#fff;box-shadow:0 7px 16px rgba(13,93,86,.18)}
+.admin-area .admin-sidebar-heading strong{font-size:15px;letter-spacing:-.01em;color:var(--ops-ink)}
+.admin-area .admin-sidebar-heading small{margin-top:3px;color:var(--ops-muted);font-size:11px}
+.admin-area .admin-nav{gap:5px;max-height:calc(100vh - 300px);padding:0 2px}
+.admin-area .admin-nav a{min-height:42px;padding:9px 11px;border-radius:11px;color:#50625d;font-size:12px;letter-spacing:.005em}
+.admin-area .admin-nav a:hover{background:#eef5f1;color:var(--teal-dark)}
+.admin-area .admin-nav a.active{background:var(--teal);color:#fff;box-shadow:0 7px 14px rgba(13,93,86,.16)}
+.admin-area .admin-nav a.active svg{color:#cce8e0}
+.admin-area .admin-content>.page-stack{gap:24px}
+.admin-area .page-heading{max-width:920px}
+.admin-area .page-heading .eyebrow{color:var(--teal);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.admin-area .page-heading h1{color:var(--ops-ink);font-size:clamp(30px,3.8vw,46px);letter-spacing:-.05em}
+.admin-area .page-heading>p:last-child{color:var(--ops-muted);font-size:15px}
+.admin-area .demo-notice{border-color:#ead6a7;border-radius:14px;background:#fffaf0;box-shadow:none}
+.admin-area .dashboard-hero{position:relative;overflow:hidden;padding:28px 30px;border:0;border-radius:20px;background:linear-gradient(135deg,#173b37 0%,#0c6259 65%,#207f71 100%);box-shadow:0 18px 35px rgba(20,65,57,.16)}
+.admin-area .dashboard-hero::after{content:"";position:absolute;right:-42px;top:-68px;width:210px;height:210px;border:1px solid rgba(255,255,255,.17);border-radius:50%;box-shadow:0 0 0 23px rgba(255,255,255,.04),0 0 0 47px rgba(255,255,255,.025)}
+.admin-area .dashboard-hero-figure{position:relative;z-index:1}
+.admin-area .dashboard-hero-figure .dashboard-hero-number{color:#fff;font-size:clamp(62px,8vw,92px);letter-spacing:-.07em}
+.admin-area .dashboard-hero-figure .dashboard-hero-label{color:#cbe5df;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.admin-area .admin-stat-grid{gap:12px}
+.admin-area .stat-card{min-height:118px;padding:18px;border:1px solid var(--ops-line);border-radius:16px;box-shadow:0 7px 20px rgba(27,54,45,.035)}
+.admin-area .stat-card>span{color:var(--ops-muted);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.admin-area .stat-card>strong{color:var(--ops-ink);font-size:27px;letter-spacing:-.035em}
+.admin-area .stat-card>svg{right:18px;bottom:18px;color:#82b8aa}
+.admin-area .admin-status-counts h2{margin:0 0 12px;color:var(--ops-ink);font-size:18px;letter-spacing:-.02em}
+.admin-area .status-count-grid{gap:10px}
+.admin-area .status-count-card{border-radius:14px;padding:15px 16px;background:#fbfcfa}
+.admin-area .status-count-card>strong{color:var(--ops-ink);font-size:23px}
+.admin-area .admin-dashboard-columns{gap:14px}
+.admin-area .admin-dashboard-columns>.card{border-radius:16px;padding:20px;background:#fff;box-shadow:0 7px 20px rgba(27,54,45,.035)}
+.admin-area .section-heading{margin-bottom:15px}
+.admin-area .section-heading h2{color:var(--ops-ink);font-size:18px}
+.admin-area .admin-activity-list{gap:0}
+.admin-area .admin-activity-list li{padding:13px 0;border-color:#edf1ee}
+.admin-area .admin-activity-list li:first-child{padding-top:0}
+.admin-area .responsive-table{border-color:var(--ops-line);border-radius:16px;box-shadow:0 7px 20px rgba(27,54,45,.035)}
+.admin-area .responsive-table th{padding:14px 15px;background:#eef5f1;color:#526762;font-size:10px;letter-spacing:.08em}
+.admin-area .responsive-table td{padding:14px 15px;border-color:#edf1ee}
+.admin-area .admin-record-list>.card,.admin-area .stacked-list>.card{border-radius:15px;box-shadow:0 7px 18px rgba(27,54,45,.03)}
+.admin-area .field{border-color:#cddbd5;border-radius:11px;background:#fff}
+.admin-area .field:focus{box-shadow:0 0 0 4px rgba(13,93,86,.11)}
+.admin-area .btn{border-radius:10px}
+.admin-area .btn-primary{box-shadow:0 7px 14px rgba(13,93,86,.13)}
+
+.vendor-area{max-width:1120px;padding-top:30px;padding-bottom:80px}
+.vendor-area .page-stack{gap:24px}
+.vendor-area .page-heading .eyebrow{color:var(--teal);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.vendor-area .page-heading h1{color:var(--ops-ink);font-size:clamp(30px,4vw,46px);letter-spacing:-.05em}
+.vendor-area .page-heading>p:last-child{color:var(--ops-muted)}
+.vendor-area .dashboard-hero{position:relative;overflow:hidden;padding:28px 30px;border:0;border-radius:20px;background:linear-gradient(135deg,#f2e7ce 0%,#f7f0df 55%,#e9f1e9 100%);box-shadow:0 14px 30px rgba(74,69,45,.08)}
+.vendor-area .dashboard-hero::after{content:"";position:absolute;right:32px;top:-42px;width:160px;height:160px;border:1px solid rgba(154,100,16,.18);border-radius:50%;box-shadow:0 0 0 20px rgba(154,100,16,.05),0 0 0 42px rgba(154,100,16,.035)}
+.vendor-area .dashboard-hero-figure{position:relative;z-index:1}
+.vendor-area .dashboard-hero-figure .dashboard-hero-number{font-size:clamp(60px,8vw,88px)}
+.vendor-area .stats-grid{gap:12px}
+.vendor-area .stat-card{min-height:118px;padding:18px;border-radius:16px;box-shadow:0 7px 20px rgba(27,54,45,.035)}
+.vendor-area .stat-card>span{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vendor-area .stat-card>strong{color:var(--ops-ink);font-size:27px;letter-spacing:-.035em}
+.vendor-area .stat-card>svg{right:18px;bottom:18px;color:#82a99d}
+.vendor-area .quick-links{gap:12px}
+.vendor-area .quick-link{min-height:80px;padding:16px 18px;border-radius:15px;box-shadow:0 7px 18px rgba(27,54,45,.035)}
+.vendor-area .quick-link:hover{background:#eef5f1;border-color:#9ac1b5;box-shadow:0 10px 22px rgba(27,54,45,.07)}
+.vendor-area .list-filters{padding:14px 16px;border:1px solid var(--ops-line);border-radius:15px;background:#fff;box-shadow:0 7px 18px rgba(27,54,45,.03)}
+.vendor-area .inquiry-row,.vendor-area .fee-row,.vendor-area .inquiry-detail-card,.vendor-area .fee-detail-card{border-radius:15px;box-shadow:0 7px 18px rgba(27,54,45,.03)}
+.vendor-area .inquiry-row h2,.vendor-area .fee-row h2{color:var(--ops-ink)}
+
+@media(max-width:900px){
+  .admin-area,.vendor-area{padding-top:20px}
+  /* Keep admin navigation as a left-side control rail at every width. */
+  .admin-area .admin-workspace{grid-template-columns:220px minmax(620px,1fr);gap:18px;align-items:start;min-width:858px}
+  .admin-area .admin-sidebar{position:sticky;top:104px}
+  .admin-area .admin-nav{display:grid;max-height:calc(100vh - 300px);overflow:auto}
+}
+@media(max-width:560px){
+  .admin-area,.vendor-area{padding-bottom:48px}
+  .admin-area .dashboard-hero,.vendor-area .dashboard-hero{padding:22px}
+  .admin-area .admin-stat-grid{grid-template-columns:1fr 1fr}
+  .vendor-area .quick-links{grid-template-columns:1fr}
+}
+
 
 /* Admin status summaries and application review */
 .status-count-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
@@ -674,4 +760,23 @@ body { font-size: 15px; line-height: 1.5; }
 @media (max-width: 700px) {
   .stats-grid:has(> :nth-child(3):last-child) { grid-template-columns: 1fr; }
   .quick-links { grid-template-columns: 1fr; }
+}
+
+/* Dashboard control-panel header — one focal number, everything else quiet.
+   Gold accent #9A6410 tuned to WCAG AA on the white surface (4.99:1) and
+   paper (4.65:1); large display number comfortably clears the threshold. */
+:root { --focal-gold: #9a6410; }
+.dashboard-hero { padding:22px 24px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+.dashboard-hero-figure { display:grid; gap:2px; }
+.dashboard-hero-figure .dashboard-hero-number { font-size:clamp(52px,8vw,76px); font-weight:800; line-height:.95; letter-spacing:-.04em; color:var(--focal-gold); font-variant-numeric:tabular-nums; }
+.dashboard-hero-figure .dashboard-hero-label { color:var(--muted); font-size:13px; font-weight:650; }
+/* Quiet the stat tiles: hairline border carries hierarchy, type does the rest;
+   numbers align on tabular figures. No uniform drop shadow. */
+.stat-card > strong { font-variant-numeric:tabular-nums; }
+.status-count-card > strong { font-variant-numeric:tabular-nums; }
+/* Drop the templated soft-grey hover shadow on quick-link tiles; keep a quiet
+   border + surface lift so the focus/hover cue survives without decoration. */
+.quick-link:hover { border-color:#8ab2a6; box-shadow:none; background:var(--teal-soft); }
+@media (max-width: 560px) {
+  .dashboard-hero { padding:18px; }
 }
