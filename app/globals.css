@@ -885,3 +885,102 @@ body { font-size: 15px; line-height: 1.5; }
   .site-wide-refresh .detail-hero{min-height:285px}
   .site-wide-refresh .detail-hero-caption{padding:18px}
 }
+
+/* Prevent nested horizontal scrolling in the venue filter rail. On phones the
+   page itself should own scrolling; compact controls use a responsive grid and
+   the advanced groups stay collapsed until opened. */
+@media (max-width:760px){
+  .site-wide-refresh .filter-panel .v2-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px;overflow:visible;margin:0;padding:0;scroll-snap-type:none}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group{width:auto;min-width:0;flex:none;margin:0;padding:12px 0;border:0;scroll-snap-align:none}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(1),
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(2),
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(5),
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(6),
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(7),
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(8),
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(9){grid-column:1/-1}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group:nth-child(1){padding-top:0}
+}
+@media (max-width:420px){
+  .site-wide-refresh .filter-panel .v2-filters{grid-template-columns:1fr}
+  .site-wide-refresh .filter-panel .v2-filters>.v2-group{grid-column:1/-1!important}
+}
+
+/* Web-only motion system. Motion is short, purposeful, and automatically
+   disabled for users who prefer reduced motion. */
+@keyframes web-page-enter{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes web-content-rise{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:none}
+}
+.site-wide-refresh{animation:web-page-enter .42s cubic-bezier(.22,.75,.25,1) both}
+.site-wide-refresh .page-stack> :nth-child(1){--motion-index:0}
+.site-wide-refresh .page-stack> :nth-child(2){--motion-index:1}
+.site-wide-refresh .page-stack> :nth-child(3){--motion-index:2}
+.site-wide-refresh .page-stack> :nth-child(4){--motion-index:3}
+.site-wide-refresh .page-stack> :nth-child(5){--motion-index:4}
+.site-wide-refresh .page-stack> :nth-child(6){--motion-index:5}
+.site-wide-refresh .page-stack> :nth-child(7){--motion-index:6}
+.site-wide-refresh .page-stack> :nth-child(8){--motion-index:7}
+.site-wide-refresh .page-stack> :is(.card,.surface,.section-heading,.results-section,.discovery-layout,.demo-notice,.form-actions,.list-toolbar){animation:web-content-rise .42s cubic-bezier(.22,.75,.25,1) calc(var(--motion-index,0) * 55ms) both}
+.site-wide-refresh :is(.vendor-market-card,.venue-card,.featured-card,.quick-link,.link-card){transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background-color .2s ease}
+.site-wide-refresh :is(.vendor-market-card,.venue-card,.featured-card,.quick-link,.link-card):hover{transform:translateY(-3px)}
+.site-wide-refresh :is(.btn,.text-link,.primary-nav a,.footer-links a,.admin-nav a,.tg-placeholder){transition:color .18s ease,background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.site-wide-refresh .btn:active{transform:translateY(1px) scale(.985)}
+.site-wide-refresh :is(.field,.v2-chip,.view-toggle button,.card-save-btn){transition:border-color .18s ease,background-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.site-wide-refresh .card-save-btn:hover{transform:scale(1.08)}
+.site-wide-refresh :is(.vendor-market-photo img,.venue-image,.featured-photo img,.my-event-feature img){will-change:transform}
+.site-wide-refresh details[open]>.v2-legend::after{animation:web-content-rise .18s ease both}
+@media (prefers-reduced-motion:reduce){
+  .site-wide-refresh,.site-wide-refresh .page-stack> :is(.card,.surface,.section-heading,.results-section,.discovery-layout,.demo-notice,.form-actions,.list-toolbar){animation:none!important}
+  .site-wide-refresh :is(.vendor-market-card,.venue-card,.featured-card,.quick-link,.link-card,.btn,.text-link,.primary-nav a,.footer-links a,.admin-nav a,.field,.v2-chip,.view-toggle button,.card-save-btn,.vendor-market-photo img,.venue-image,.featured-photo img,.my-event-feature img){transition:none!important}
+  .site-wide-refresh :is(.vendor-market-card,.venue-card,.featured-card,.quick-link,.link-card,.btn,.card-save-btn):hover{transform:none}
+}
+
+/* Mobile header: brand, actions, and menu each get a predictable column so
+   the navigation control never wraps into the content. */
+@media (max-width:760px){
+  .site-header .header-inner{display:grid;grid-template-columns:minmax(0,1fr) auto 40px;gap:8px;align-items:center;min-width:0}
+  .site-header .brand-lockup{grid-column:1;grid-row:1;min-width:0}
+  .site-header .header-actions{grid-column:2;grid-row:1;min-width:0;justify-content:flex-end}
+  .site-header .mobile-nav-toggle{grid-column:3;grid-row:1;order:initial;width:40px;min-width:40px;height:40px;padding:8px;font-size:0!important;white-space:nowrap}
+  .site-header .mobile-nav-toggle svg{width:20px;height:20px;flex:none}
+  .site-header .primary-nav{grid-column:1/-1;grid-row:2;order:initial;width:100%;min-width:0}
+  .site-header .header-actions .sign-in-link{max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media (max-width:420px){
+  .site-header .header-inner{grid-template-columns:minmax(0,1fr) auto 38px;gap:5px}
+  .site-header .mobile-nav-toggle{width:38px;min-width:38px}
+  .site-header .header-actions{gap:2px}
+  .site-header .locale-select{max-width:66px;padding-inline:3px}
+  .site-header .header-actions .sign-in-link{max-width:62px;padding-inline:7px}
+}
+
+/* Venue filters: desktop keeps a contained scrolling rail; mobile uses a
+   single filter button and a bottom drawer so results never compete with the
+   filter form for vertical space. */
+.mobile-filter-bar,.mobile-filter-drawer{display:none}
+@media (min-width:761px){
+  .site-wide-refresh .discovery-layout>.filter-panel{position:sticky;top:104px;max-height:calc(100dvh - 124px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:13px}
+}
+@media (max-width:760px){
+  .site-wide-refresh .discovery-layout>.filter-panel{display:none}
+  .site-wide-refresh .mobile-filter-bar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .site-wide-refresh .mobile-filter-bar .btn{min-height:44px}
+  .mobile-filter-drawer{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end}
+  .mobile-filter-backdrop{position:absolute;inset:0;border:0;background:rgba(12,35,31,.42);cursor:pointer}
+  .mobile-filter-sheet{position:relative;z-index:1;width:100%;max-height:90dvh;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--site-line);border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -14px 34px rgba(20,38,33,.22);animation:web-content-rise .22s ease both}
+  .mobile-filter-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px 10px;border-bottom:1px solid var(--site-line)}
+  .mobile-filter-sheet-head h2{margin:0;font-size:18px}
+  .mobile-filter-sheet-body{overflow-y:auto;padding:4px 16px 16px;overscroll-behavior:contain}
+  .mobile-filter-sheet-body>.v2-filters{display:grid;gap:0}
+  .mobile-filter-sheet-body>.v2-filters>.v2-group{padding:12px 0}
+  .mobile-filter-sheet-body>.v2-filters>.v2-group:nth-child(1){padding-top:4px}
+  .mobile-filter-sheet-body>h2,.mobile-filter-sheet-body>.btn{display:none}
+  .mobile-filter-sheet-foot{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--site-line);background:var(--surface)}
+  .mobile-filter-sheet-foot .btn{width:100%;min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){.mobile-filter-sheet{animation:none}}

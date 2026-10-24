@@ -3,7 +3,7 @@
 import { Link, useRouter } from "@/lib/nav";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Grid2X2, Heart, List, MapPin, Search, ShieldAlert, Star, Users, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Grid2X2, Heart, List, MapPin, Search, ShieldAlert, SlidersHorizontal, Star, Users, X } from "lucide-react";
 import { mockVenues, type Venue } from "@/lib/mock-data";
 import { useDemo } from "@/lib/store";
 import { formatDate, formatETB, formatMonthYear, formatNumber } from "@/lib/format";
@@ -52,16 +52,22 @@ export function VenueBrowser() {
   const { locale, venues, bookings } = useDemo();
   const loading = useDemoLoading();
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const controller = useVenueFiltersV2(venues, bookings);
   const { results, activeCount, clear, sort, setSort } = controller;
+  const filterContent = (idPrefix: string, withClear = true) => <>
+    <h2><Search size={18} aria-hidden="true" />{t("filters", locale)}</h2>
+    <VenueFiltersV2 locale={locale} controller={controller} idPrefix={idPrefix} showSearch />
+    {withClear && <button className="btn btn-secondary full-width" type="button" onClick={clear}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>}
+  </>;
   return <div className="page-stack">
     <PageHeading title={t("latestVenues", locale)} description={t("homeDescription", locale)} />
     <div className="discovery-layout">
-      <aside className="filter-panel card" aria-label={t("ariaFilters", locale)}>
-        <h2><Search size={18} aria-hidden="true" />{t("filters", locale)}</h2>
-        <VenueFiltersV2 locale={locale} controller={controller} idPrefix="venue" showSearch />
-        <button className="btn btn-secondary full-width" type="button" onClick={clear}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>
-      </aside>
+      <aside className="filter-panel card" aria-label={t("ariaFilters", locale)}>{filterContent("venue")}</aside>
+      <div className="mobile-filter-bar">
+        <button className="btn btn-secondary" type="button" onClick={() => setMobileFiltersOpen(true)} aria-haspopup="dialog" aria-expanded={mobileFiltersOpen}><SlidersHorizontal size={17} aria-hidden="true" />{t("filters", locale)}{activeCount > 0 ? ` (${formatNumber(activeCount, locale)})` : ""}</button>
+        <span className="small-note">{formatNumber(results.length, locale)} {t("venues", locale)}</span>
+      </div>
       <section className="results-section" aria-labelledby="venue-results-title">
         <div className="results-toolbar"><div><p className="eyebrow">{t("results", locale)}</p><h2 id="venue-results-title">{formatNumber(results.length, locale)} <span className="muted">{t("venues", locale)}</span></h2></div><div className="v2-toolbar-controls"><div className="v2-sort"><label htmlFor="venue-sort">{tv2("fSort", locale)}</label><select id="venue-sort" className="field" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>{(["recommended", "priceLow", "priceHigh", "capacityHigh", "capacityLow"] as SortKey[]).map((key) => <option key={key} value={key}>{tv2(`sort.${key}` as V2CopyKey, locale)}</option>)}</select></div><div className="view-toggle" role="group" aria-label={t("listView", locale)}><button type="button" aria-pressed={view === "grid"} aria-label={t("gridView", locale)} onClick={() => setView("grid")}><Grid2X2 size={17} aria-hidden="true" /></button><button type="button" aria-pressed={view === "list"} aria-label={t("listView", locale)} onClick={() => setView("list")}><List size={18} aria-hidden="true" /></button></div></div></div>
         <ListState locale={locale} items={results.length} loading={loading} noResults={activeCount > 0} emptyKey="emptyVenues">
@@ -69,6 +75,14 @@ export function VenueBrowser() {
         </ListState>
       </section>
     </div>
+    {mobileFiltersOpen && <div className="mobile-filter-drawer" role="dialog" aria-modal="true" aria-label={t("filters", locale)}>
+      <button className="mobile-filter-backdrop" type="button" aria-label={t("cancel", locale)} onClick={() => setMobileFiltersOpen(false)} />
+      <section className="mobile-filter-sheet">
+        <header className="mobile-filter-sheet-head"><h2>{t("filters", locale)}</h2><button className="icon-link" type="button" aria-label={t("cancel", locale)} onClick={() => setMobileFiltersOpen(false)}><X size={20} aria-hidden="true" /></button></header>
+        <div className="mobile-filter-sheet-body">{filterContent("venue-mobile", false)}</div>
+        <footer className="mobile-filter-sheet-foot"><button className="btn btn-secondary" type="button" onClick={clear}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button><button className="btn btn-primary" type="button" onClick={() => setMobileFiltersOpen(false)}>{t("applyFilters", locale)} · {formatNumber(results.length, locale)}</button></footer>
+      </section>
+    </div>}
   </div>;
 }
 
