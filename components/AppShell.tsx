@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, Languages } from "lucide-react";
+import { Bell, Languages, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDemo } from "@/lib/store";
 import { t } from "@/lib/i18n";
@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span><strong>{t("brand", locale)}</strong><small>{t("tagline", locale)}</small></span>
         </Link>
         <button className="mobile-nav-toggle btn btn-secondary" type="button" aria-expanded={mobileOpen} aria-controls="primary-navigation" aria-label={t(mobileOpen ? "menuClose" : "menuOpen", locale)} onClick={() => setMobileOpen((v) => !v)}>
-          <ChevronDown size={18} aria-hidden="true" />{t("menuOpen", locale)}
+          {mobileOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}<span className="sr-only">{t(mobileOpen ? "menuClose" : "menuOpen", locale)}</span>
         </button>
         <nav id="primary-navigation" className={`primary-nav ${mobileOpen ? "is-open" : ""}`} aria-label={t("ariaNavigation", locale)}>
           {mainLinks.map(([href, key]) => <Link key={href} className={pathname === href ? "active" : ""} href={href}>{t(key, locale)}</Link>)}

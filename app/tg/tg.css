@@ -215,3 +215,24 @@
   .tg-shell .tg-toolbar .eyebrow{width:100%;margin:0}
   .tg-shell .venue-card-body,.tg-shell .vendor-market-copy{padding:13px}
 }
+
+/* Lightweight touch motion for Telegram: quick feedback without desktop-style
+   page choreography or hover-dependent interactions. */
+@keyframes tg-content-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.tg-shell .tg-main>.page-stack> :is(.card,.tg-home-hero,.tg-searchbar,.tg-toolbar,.tg-chips,.venue-grid,.small-note){animation:tg-content-enter .26s ease both}
+.tg-shell .tg-main>.page-stack> :nth-child(2){animation-delay:30ms}
+.tg-shell .tg-main>.page-stack> :nth-child(3){animation-delay:60ms}
+.tg-shell .tg-main>.page-stack> :nth-child(4){animation-delay:90ms}
+.tg-shell .tg-main>.page-stack> :nth-child(5){animation-delay:120ms}
+.tg-shell :is(.btn,.tg-icon-btn,.tg-navitem,.tg-chip,.card-save-btn):active{transform:scale(.97)}
+.tg-shell :is(.venue-card,.vendor-market-card,.tg-home-hero) img{transition:transform .24s ease,filter .24s ease}
+.tg-shell :is(.venue-card,.vendor-market-card,.tg-home-hero):active img{transform:scale(1.02);filter:saturate(1.04)}
+.tg-shell .v2-collapsible>.v2-legend::after{transition:transform .18s ease;color:var(--teal)}
+.tg-shell .v2-collapsible[open]>.v2-legend::after{transform:rotate(45deg)}
+@media (prefers-reduced-motion:reduce){
+  .tg-shell .tg-main>.page-stack> :is(.card,.tg-home-hero,.tg-searchbar,.tg-toolbar,.tg-chips,.venue-grid,.small-note),
+  .tg-shell :is(.btn,.tg-icon-btn,.tg-navitem,.tg-chip,.card-save-btn),
+  .tg-shell :is(.venue-card,.vendor-market-card,.tg-home-hero) img,
+  .tg-shell .v2-collapsible>.v2-legend::after{animation:none!important;transition:none!important}
+  .tg-shell :is(.btn,.tg-icon-btn,.tg-navitem,.tg-chip,.card-save-btn):active{transform:none}
+}
