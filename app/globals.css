@@ -863,7 +863,7 @@ body { font-size: 15px; line-height: 1.5; }
   .site-wide-refresh .discovery-layout{gap:18px}
   .site-wide-refresh .filter-panel{display:block;overflow:hidden;padding:16px}
   .site-wide-refresh .filter-panel h2{margin-bottom:14px}
-  .site-wide-refresh .filter-panel .v2-filters{display:flex;gap:0;overflow-x:auto;margin-inline:-16px;padding:0 16px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .site-wide-refresh .filter-panel .v2-filters{display:flex;gap:0;overflow-x:auto;margin-inline:-16px;padding:0 16px 8px;scroll-snap-type:x proximity}
   .site-wide-refresh .filter-panel .v2-filters::-webkit-scrollbar{display:none}
   .site-wide-refresh .filter-panel .v2-filters>.v2-group{flex:0 0 min(82vw,310px);margin:0;padding:0 14px;border:0;border-left:1px solid var(--site-line);scroll-snap-align:start}
   .site-wide-refresh .filter-panel .v2-filters>.v2-group:first-child{padding-top:0;border-left:0}
@@ -964,7 +964,7 @@ body { font-size: 15px; line-height: 1.5; }
    filter form for vertical space. */
 .mobile-filter-bar,.mobile-filter-drawer{display:none}
 @media (min-width:761px){
-  .site-wide-refresh .discovery-layout>.filter-panel{position:sticky;top:104px;max-height:calc(100dvh - 124px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:13px}
+  .site-wide-refresh .discovery-layout>.filter-panel{position:sticky;top:104px;max-height:calc(100dvh - 124px);overflow-y:auto;overscroll-behavior:contain;padding-right:13px}
 }
 @media (max-width:760px){
   .site-wide-refresh .discovery-layout>.filter-panel{display:none}
