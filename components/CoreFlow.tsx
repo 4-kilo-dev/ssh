@@ -88,6 +88,7 @@ export function VenueBrowser() {
     {mobileFiltersOpen && <div className="mobile-filter-drawer" role="dialog" aria-modal="true" aria-label={t("filters", locale)}>
       <button className="mobile-filter-backdrop" type="button" aria-label={t("cancel", locale)} onClick={() => setMobileFiltersOpen(false)} />
       <section className="mobile-filter-sheet">
+        <span className="mobile-filter-sheet-handle" aria-hidden="true" />
         <header className="mobile-filter-sheet-head"><h2>{t("filters", locale)}</h2><button className="icon-link" type="button" aria-label={t("cancel", locale)} onClick={() => setMobileFiltersOpen(false)}><X size={20} aria-hidden="true" /></button></header>
         <div className="mobile-filter-sheet-body">{filterContent("venue-mobile", false)}</div>
         <footer className="mobile-filter-sheet-foot"><button className="btn btn-secondary" type="button" onClick={clear}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button><button className="btn btn-primary" type="button" onClick={() => setMobileFiltersOpen(false)}>{t("applyFilters", locale)} · {formatNumber(results.length, locale)}</button></footer>

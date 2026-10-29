@@ -201,6 +201,10 @@
 .tg-shell .btn-secondary:hover{border-color:#94b5a8;background:#eef5f1}
 .tg-shell .venue-card,.tg-shell .vendor-market-card{border-color:var(--site-line);border-radius:16px;background:linear-gradient(145deg,#fff 0%,#f8faf7 100%);box-shadow:0 8px 24px rgba(27,54,45,.035)}
 .tg-shell .venue-card:hover,.tg-shell .vendor-market-card:hover{border-color:#a9c9bb;box-shadow:0 14px 30px rgba(27,54,45,.09)}
+.tg-vendor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tg-vendor-filters { display: grid; gap: 9px; }
+.tg-vendor-price-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.tg-vendor-price-row .label { display: grid; gap: 6px; }
 .tg-shell .tg-toolbar{align-items:center;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--site-line);border-radius:15px;background:#fff}
 .tg-shell .tg-toolbar .v2-sort{flex:1;min-width:190px}
 .tg-shell .tg-toolbar .v2-sort .field{width:100%;min-width:0}
@@ -214,6 +218,7 @@
   .tg-shell .tg-toolbar .btn,.tg-shell .tg-toolbar .v2-sort{width:100%}
   .tg-shell .tg-toolbar .eyebrow{width:100%;margin:0}
   .tg-shell .venue-card-body,.tg-shell .vendor-market-copy{padding:13px}
+  .tg-vendor-grid { grid-template-columns: 1fr; }
 }
 
 /* Lightweight touch motion for Telegram: quick feedback without desktop-style
