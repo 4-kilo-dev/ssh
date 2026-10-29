@@ -9,7 +9,7 @@ import { useDemo } from "@/lib/store";
 import { initTelegram, setTelegramBackButton } from "@/lib/telegram";
 import { TgBottomNav } from "@/components/tg/TgBottomNav";
 
-const rootTabs = ["/", "/venues", "/my-event", "/profile"];
+const rootTabs = ["/", "/venues", "/vendors", "/my-event", "/profile"];
 
 /**
  * Mobile chrome for the Telegram Mini App: a compact top bar plus the bottom

@@ -45,7 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <button className="mobile-nav-toggle btn btn-secondary" type="button" aria-expanded={mobileOpen} aria-controls="primary-navigation" aria-label={t(mobileOpen ? "menuClose" : "menuOpen", locale)} onClick={() => setMobileOpen((v) => !v)}>
           {mobileOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}<span className="sr-only">{t(mobileOpen ? "menuClose" : "menuOpen", locale)}</span>
         </button>
+        {mobileOpen && <button className="mobile-nav-backdrop" type="button" aria-label={t("menuClose", locale)} onClick={() => setMobileOpen(false)} />}
         <nav id="primary-navigation" className={`primary-nav ${mobileOpen ? "is-open" : ""}`} aria-label={t("ariaNavigation", locale)}>
+          <div className="mobile-nav-drawer-head"><strong>{t("brand", locale)}</strong><button className="mobile-nav-close" type="button" aria-label={t("menuClose", locale)} onClick={() => setMobileOpen(false)}><X size={21} aria-hidden="true" /></button></div>
           {mainLinks.map(([href, key]) => <Link key={href} className={pathname === href ? "active" : ""} href={href}>{t(key, locale)}</Link>)}
           <Link className={pathname.startsWith("/my-") || pathname === "/profile" ? "active" : ""} href={role === "customer" ? "/my-event" : "/sign-in"}>{t("myEvent", locale)}</Link>
           <Link href={role === "vendor" ? "/vendor" : "/vendor/sign-in"}>{t("vendorArea", locale)}</Link>

@@ -23,8 +23,10 @@ export function LandingPage() {
           <Link className="btn btn-primary" href="/venues">{t("exploreVenues", locale)} <ArrowRight size={17} aria-hidden="true" /></Link>
           <Link className="btn btn-secondary" href="/bookings/new"><CalendarDays size={17} aria-hidden="true" />{t("bookVenue", locale)}</Link>
         </div>
-        <Link className="hero-vendor-link text-link" href="/vendors">{t("exploreVendors", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
-        <Link className="hero-vendor-link text-link" href="/vendor/apply">Join as a vendor <ArrowRight size={15} aria-hidden="true" /></Link>
+        <div className="hero-vendor-links">
+          <Link className="hero-vendor-link text-link" href="/vendors">{t("exploreVendors", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link className="hero-vendor-link text-link" href="/vendor/apply">Join as a vendor <ArrowRight size={15} aria-hidden="true" /></Link>
+        </div>
         <div className="home-location"><MapPin size={15} aria-hidden="true" /><span>{t("addisAbaba", locale)}</span><span className="location-divider" /><span>{t("localOnly", locale)}</span></div>
         <ul className="home-proof" aria-label={t("homeProofLabel", locale)}>
           <li><Check size={15} aria-hidden="true" /><span>{t("homeProofOne", locale)}</span></li>
