@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Home, MapPin, UserRound } from "lucide-react";
+import { BriefcaseBusiness, CalendarCheck, Home, MapPin, UserRound } from "lucide-react";
 import { Link } from "@/lib/nav";
 import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
@@ -9,11 +9,12 @@ import { useDemo } from "@/lib/store";
 const tabs = [
   { href: "/", key: "home", Icon: Home },
   { href: "/venues", key: "venues", Icon: MapPin },
+  { href: "/vendors", key: "vendors", Icon: BriefcaseBusiness },
   { href: "/my-event", key: "myEvent", Icon: CalendarCheck },
   { href: "/profile", key: "tgProfileTab", Icon: UserRound },
 ] as const;
 
-/** Bottom navigation: Home, Venues, My Event, Profile. */
+/** Bottom navigation: Home, Venues, Vendors, My Event, Profile. */
 export function TgBottomNav() {
   const { locale } = useDemo();
   const pathname = usePathname();

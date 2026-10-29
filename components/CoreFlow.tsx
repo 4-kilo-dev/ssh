@@ -29,6 +29,7 @@ function PageHeading({ kicker, title, description }: { kicker?: string; title: s
 export function VenueCard({ venue }: { venue: Venue }) {
   const { locale, savedVenues, toggleSavedVenue } = useDemo();
   const isSaved = (savedVenues ?? []).includes(venue.id);
+  const rating = typeof venue.rating === "number" && Number.isFinite(venue.rating) ? venue.rating : null;
   return <article className="venue-card card">
     <div className="venue-image-wrap-rel">
       <Link href={`/venues/${venue.id}`} className="venue-image-link" aria-label={`${t("viewDetails", locale)}: ${venue.name}`}>
@@ -40,10 +41,11 @@ export function VenueCard({ venue }: { venue: Venue }) {
     </div>
     <div className="venue-card-body">
       <div className="card-title-row"><div><p className="eyebrow">{venueTypeLabel(venue.type, locale)}</p><h2><Link href={`/venues/${venue.id}`}>{venue.name}</Link></h2></div></div>
-      <p className="muted line-clamp-2">{venue.description}</p>
+      {rating !== null && <div className="venue-card-rating"><Star size={16} fill="currentColor" aria-hidden="true" /><strong>{rating.toFixed(1)}</strong><span>· {venue.area}</span></div>}
+      <p className="muted line-clamp-3">{venue.description}</p>
       <div className="venue-facts"><span><Users size={15} aria-hidden="true" />{formatNumber(venue.capacity, locale)} {t("guests", locale)}</span><span>{t("startingAt", locale)} <strong>{formatETB(venue.price, locale)}</strong></span></div>
       <div className="tag-list">{venue.amenities.slice(0, 3).map((amenity) => <span className="tag" key={amenity}>{amenityLabel(amenity, locale)}</span>)}</div>
-      <Link className="text-link" href={`/venues/${venue.id}`}>{t("viewDetails", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
+      <Link className="btn btn-primary full-width venue-card-cta" href={`/venues/${venue.id}`}>{t("viewDetails", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
     </div>
   </article>;
 }
@@ -57,11 +59,19 @@ export function VenueBrowser() {
   const { results, activeCount, clear, sort, setSort } = controller;
   const filterContent = (idPrefix: string, withClear = true) => <>
     <h2><Search size={18} aria-hidden="true" />{t("filters", locale)}</h2>
-    <VenueFiltersV2 locale={locale} controller={controller} idPrefix={idPrefix} showSearch />
+    <VenueFiltersV2 locale={locale} controller={controller} idPrefix={idPrefix} />
     {withClear && <button className="btn btn-secondary full-width" type="button" onClick={clear}><X size={15} aria-hidden="true" />{t("clearFilters", locale)}</button>}
   </>;
   return <div className="page-stack">
-    <PageHeading title={t("latestVenues", locale)} description={t("homeDescription", locale)} />
+    <div className="venue-discovery-intro">
+      <div className="breadcrumbs"><Link href="/">{t("home", locale)}</Link><span aria-hidden="true">/</span><span>{t("venues", locale)}</span></div>
+      <form className="venue-discovery-search" role="search" onSubmit={(event) => event.preventDefault()}>
+        <Search size={20} aria-hidden="true" />
+        <label className="sr-only" htmlFor="venue-discovery-search">{t("search", locale)}</label>
+        <input id="venue-discovery-search" className="field" value={controller.filters.query} onChange={(event) => controller.update("query", event.target.value)} placeholder={t("searchPlaceholder", locale)} />
+      </form>
+      <PageHeading title={t("latestVenues", locale)} description={t("homeDescription", locale)} />
+    </div>
     <div className="discovery-layout">
       <aside className="filter-panel card" aria-label={t("ariaFilters", locale)}>{filterContent("venue")}</aside>
       <div className="mobile-filter-bar">

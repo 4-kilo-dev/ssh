@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useDemo } from "@/lib/store";
+import { Link } from "@/lib/nav";
 import { t } from "@/lib/i18n";
 import { formatNumber } from "@/lib/format";
 import { useVenueFiltersV2, type SortKey } from "@/lib/venue-filters-v2";
@@ -41,24 +42,14 @@ export function TgVenueBrowser() {
   </>;
 
   return <div className="page-stack">
-    <header className="page-heading">
-      <div className="eyebrow">{t("homeKicker", locale)}</div>
-      <h1>{t("latestVenues", locale)}</h1>
-      <p>{t("homeDescription", locale)}</p>
-    </header>
-
-    <form className="tg-searchbar" role="search" onSubmit={(event) => event.preventDefault()}>
-      <div className="search-field">
-        <Search size={16} aria-hidden="true" />
-        <input
-          className="field"
-          value={filters.query}
-          onChange={(event) => controller.update("query", event.target.value)}
-          placeholder={t("searchPlaceholder", locale)}
-          aria-label={t("search", locale)}
-        />
-      </div>
-    </form>
+    <div className="venue-discovery-intro">
+      <div className="breadcrumbs"><Link href="/tg">{t("home", locale)}</Link><span aria-hidden="true">/</span><span>{t("venues", locale)}</span></div>
+      <form className="venue-discovery-search" role="search" onSubmit={(event) => event.preventDefault()}>
+        <Search size={20} aria-hidden="true" />
+        <input className="field" value={filters.query} onChange={(event) => controller.update("query", event.target.value)} placeholder={t("searchPlaceholder", locale)} aria-label={t("search", locale)} />
+      </form>
+      <header className="page-heading"><div className="eyebrow">{t("homeKicker", locale)}</div><h1>{t("latestVenues", locale)}</h1><p>{t("homeDescription", locale)}</p></header>
+    </div>
 
     <div className="tg-toolbar">
       <button className="btn btn-secondary" type="button" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
