@@ -18,7 +18,7 @@ const categoryKeys: Record<string, string> = {
   "Music & sound": "categoryMusic", Beauty: "categoryBeauty", Video: "categoryVideo", Flowers: "categoryFlowers",
 };
 const localCategory = (value: string, locale: "en" | "am") => t(categoryKeys[value] || "categoryOther", locale);
-function useListLoading() {
+export function useListLoading() {
   const [loading, setLoading] = useState(true);
   useEffect(() => { const timer = window.setTimeout(() => setLoading(false), 220); return () => window.clearTimeout(timer); }, []);
   return loading;
@@ -31,7 +31,7 @@ function DemoNotice() {
   const { locale } = useDemo();
   return <div className="demo-notice" role="note"><ShieldAlert size={18} aria-hidden="true" /><div><strong>{t("demoNotice", locale)}</strong><p>{t("noTransactions", locale)} {t("noCredentials", locale)}</p></div></div>;
 }
-function VendorCard({ vendor }: { vendor: Vendor }) {
+export function VendorCard({ vendor }: { vendor: Vendor }) {
   const { locale, savedVendors, toggleSaved } = useDemo();
   const isSaved = savedVendors.includes(vendor.id);
   return <article className="vendor-market-card card">

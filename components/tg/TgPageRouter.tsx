@@ -6,11 +6,12 @@ import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
 import { DemoControls } from "@/components/DemoControls";
 import { BookingRequestForm, BookingSubmitted, MyEventDashboard, PaymentScreen, VenueDetails } from "@/components/CoreFlow";
-import { CustomerInquiries, CustomerInquiryDetail, CustomerVendorBrowser, InquiryRequest, InquirySent, VendorProfile } from "@/components/VendorFlow";
+import { CustomerInquiries, CustomerInquiryDetail, InquiryRequest, InquirySent, VendorProfile } from "@/components/VendorFlow";
 import { ContactPage, CustomerBookingDetail, CustomerBookings, CustomerNotifications, CustomerPayments, CustomerProfileSetup, CustomerSavedVendors, CustomerSettings, CustomerSignIn, StaticCustomerPage } from "@/components/CustomerExtras";
 import { TgHome } from "@/components/tg/TgHome";
 import { TgSignIn } from "@/components/tg/TgSignIn";
 import { TgVenueBrowser } from "@/components/tg/TgVenueBrowser";
+import { TgVendorBrowser } from "@/components/tg/TgVendorBrowser";
 import { TgVenueBrowserGate } from "@/components/venues-v2/VenueBrowserGates";
 import { TgCalendar } from "@/components/tg/TgCalendar";
 import { TgStickyAction } from "@/components/tg/TgStickyAction";
@@ -45,7 +46,7 @@ export function TgPageRouter() {
     return <VenueDetails venueId={pieces[1]} calendar={(slot) => <TgCalendar {...slot} />} />;
   }
 
-  if (logical === "/vendors") return <CustomerVendorBrowser />;
+  if (logical === "/vendors") return <TgVendorBrowser />;
   if (pieces[0] === "vendors" && pieces[1]) return <VendorProfile vendorId={pieces[1]} />;
   if (logical === "/inquiries/new") return <InquiryRequest />;
   if (logical === "/inquiries/sent") return <InquirySent />;
