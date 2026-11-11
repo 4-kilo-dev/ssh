@@ -5,3 +5,6 @@ out/
 *.log
 .env*
 *.tsbuildinfo
+
+# Internal agent/business docs — never pushed, not even to a private repo
+docs/
