@@ -30,6 +30,7 @@ import {
   inquiryMessages,
   supportTickets,
   auditLogs,
+  vendors,
 } from "../lib/db/schema";
 import { createAccount, setPassword } from "../lib/services/account-service";
 import { createVenue } from "../lib/services/venue-service";
@@ -45,6 +46,11 @@ import {
   sendMessage,
 } from "../lib/services/inquiry-service";
 import { createTicket, updateTicketStatus } from "../lib/services/ticket-service";
+import {
+  createVendor,
+  setVendorBoost,
+  setVendorVerified,
+} from "../lib/services/vendor-service";
 
 function getRelativeDate(daysOffset: number, hour: number = 10, minute: number = 0): Date {
   const d = new Date();
@@ -60,6 +66,7 @@ async function main() {
 
   // 1. Clean existing records in reverse dependency order
   console.log("🧹 Cleaning existing marketplace data...");
+  await db.delete(vendors);
   await db.delete(supportTickets);
   await db.delete(auditLogs);
   await db.delete(inquiryMessages);
@@ -514,6 +521,156 @@ async function main() {
   });
   console.log(`✓ [TICKET open] Tigist: Fairway Lawn calendar sync`);
 
+  // 8. Seed Vendors (Deterministic Ranking & Isolation)
+  console.log("\n✨ Creating Event Vendors (Deterministic Ranking & Isolation)...");
+
+  // Vendor 1: Selamawit Fine Art Photography (Boosted + Verified)
+  const accSelam = await createAccount({
+    name: "Selamawit Photography",
+    phone: "+251911440001",
+    role: "vendor",
+    telegramId: "tg_vendor_demo",
+  });
+  await setPassword(accSelam.id, "password123");
+  const v1 = await createVendor({
+    ownerId: accSelam.id,
+    name: "Selamawit Fine Art Photography",
+    category: "Photography",
+    description: "Capturing authentic Ethiopian wedding moments, traditional melse ceremonies, and gala summits.",
+    priceRange: "ETB 35,000 - 90,000",
+    phone: "+251911440001",
+    email: "selamawit@addisvisuals.et",
+    area: "Bole",
+  });
+  await setVendorBoost({
+    vendorId: v1.id,
+    callerId: accSelam.id,
+    boostStatus: "boosted",
+    boostScore: 100,
+  });
+  await setVendorVerified({
+    vendorId: v1.id,
+    callerId: admin.id,
+    verified: true,
+  });
+  console.log(`✓ [VENDOR Rank #1: Boosted+Verified] Selamawit Fine Art Photography`);
+
+  // Vendor 2: Finfinne Royal Catering (Boosted + Verified)
+  const accFikru = await createAccount({
+    name: "Fikru Royal Catering",
+    phone: "+251911440002",
+    role: "vendor",
+  });
+  await setPassword(accFikru.id, "password123");
+  const v2 = await createVendor({
+    ownerId: accFikru.id,
+    name: "Finfinne Royal Catering",
+    category: "Catering",
+    description: "Exceptional culinary experiences combining traditional Ethiopian feasts and continental banquets.",
+    priceRange: "ETB 450 - 950 per guest",
+    phone: "+251911440002",
+    email: "info@finfinneroyal.et",
+    area: "Kazanchis",
+  });
+  await setVendorBoost({
+    vendorId: v2.id,
+    callerId: accFikru.id,
+    boostStatus: "boosted",
+    boostScore: 75,
+  });
+  await setVendorVerified({
+    vendorId: v2.id,
+    callerId: admin.id,
+    verified: true,
+  });
+  console.log(`✓ [VENDOR Rank #2: Boosted+Verified] Finfinne Royal Catering`);
+
+  // Vendor 3: Enat Wedding Stage & Florals (Standard + Verified)
+  const accMartha = await createAccount({
+    name: "Martha Decor",
+    phone: "+251911440003",
+    role: "vendor",
+  });
+  await setPassword(accMartha.id, "password123");
+  const v3 = await createVendor({
+    ownerId: accMartha.id,
+    name: "Enat Wedding Stage & Florals",
+    category: "Decor & Stage",
+    description: "Modern bespoke floral arches, luxury crystal chandeliers, and grand Ethiopian bridal stages.",
+    priceRange: "ETB 60,000 - 180,000",
+    phone: "+251911440003",
+    email: "decor@enatwedding.et",
+    area: "Bole",
+  });
+  await setVendorVerified({
+    vendorId: v3.id,
+    callerId: admin.id,
+    verified: true,
+  });
+  console.log(`✓ [VENDOR Rank #3: Standard+Verified] Enat Wedding Stage & Florals`);
+
+  // Vendor 4: Zemen Traditional Bridal Attire (Standard + Verified)
+  const accGenet = await createAccount({
+    name: "Genet Traditional Wear",
+    phone: "+251911440004",
+    role: "vendor",
+  });
+  await setPassword(accGenet.id, "password123");
+  const v4 = await createVendor({
+    ownerId: accGenet.id,
+    name: "Zemen Traditional Bridal Attire",
+    category: "Traditional Attire",
+    description: "Handwoven luxury Shewa and Gondar style bridal habesha kemis with custom gold embroidery.",
+    priceRange: "ETB 15,000 - 45,000",
+    phone: "+251911440004",
+    email: "zemen@addisattire.et",
+    area: "Old Airport",
+  });
+  await setVendorVerified({
+    vendorId: v4.id,
+    callerId: admin.id,
+    verified: true,
+  });
+  console.log(`✓ [VENDOR Rank #4: Standard+Verified] Zemen Traditional Bridal Attire`);
+
+  // Vendor 5: Sheger Groove Sound & Lighting (Standard + Unverified)
+  const accErmias = await createAccount({
+    name: "Ermias Sound",
+    phone: "+251911440005",
+    role: "vendor",
+  });
+  await setPassword(accErmias.id, "password123");
+  await createVendor({
+    ownerId: accErmias.id,
+    name: "Sheger Groove Sound & Lighting",
+    category: "Sound & DJ",
+    description: "Line-array concert grade acoustics, digital wireless mics, intelligent beam lighting, and wedding DJs.",
+    priceRange: "ETB 25,000 - 65,000",
+    phone: "+251911440005",
+    email: "shegergroove@sound.et",
+    area: "Piazza",
+  });
+  console.log(`✓ [VENDOR Rank #5: Standard] Sheger Groove Sound & Lighting`);
+
+  // Vendor 6: Entoto Sweet Treats & Pastry (Standard + Unverified)
+  const accRuth = await createAccount({
+    name: "Ruth Pastry",
+    phone: "+251911440006",
+    role: "vendor",
+  });
+  await setPassword(accRuth.id, "password123");
+  await createVendor({
+    ownerId: accRuth.id,
+    name: "Entoto Sweet Treats & Wedding Cakes",
+    category: "Cake & Pastry",
+    description: "Multi-tiered artisanal wedding cakes, French macarons, and decadent dessert banquet tables.",
+    priceRange: "ETB 12,000 - 35,000",
+    phone: "+251911440006",
+    email: "ruth@entotocakes.et",
+    area: "Tor Hailoch",
+  });
+  console.log(`✓ [VENDOR Rank #6: Standard] Entoto Sweet Treats & Wedding Cakes`);
+
   console.log("\n========================================================");
   console.log("🎉 SEEDING COMPLETED SUCCESSFULLY!");
   console.log("========================================================");
@@ -522,6 +679,7 @@ async function main() {
   console.log("  • Manager B (Bellevue Hotel):       +251911999902");
   console.log("  • Manager C (Tor Hailoch Golf):     +251911334455");
   console.log("  • Manager D (Harmony Hotel):        +251911556677");
+  console.log("  • Demo Vendor (Selamawit Photo):   +251911440001");
   console.log("  • Customer Dawit:                  +251915112233");
   console.log("  • Customer Sara:                   +251915999902");
   console.log("  • Super Admin:                     +251911000000");

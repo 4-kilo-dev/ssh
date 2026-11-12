@@ -316,3 +316,34 @@ export const supportTickets = pgTable("support_tickets", {
 
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type NewSupportTicket = typeof supportTickets.$inferInsert;
+
+// Phase 8: Vendor Boost Status Enum
+export const vendorBoostStatusEnum = pgEnum("vendor_boost_status", [
+  "standard",
+  "boosted",
+]);
+
+export type VendorBoostStatus = (typeof vendorBoostStatusEnum.enumValues)[number];
+
+// Phase 8: Vendors Table (Strictly Isolated from Booking/Venue Core)
+export const vendors = pgTable("vendors", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  description: text("description"),
+  priceRange: text("price_range"),
+  phone: text("phone"),
+  email: text("email"),
+  area: text("area"),
+  verified: boolean("verified").notNull().default(false),
+  boostStatus: vendorBoostStatusEnum("boost_status").notNull().default("standard"),
+  boostScore: integer("boost_score").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Vendor = typeof vendors.$inferSelect;
+export type NewVendor = typeof vendors.$inferInsert;

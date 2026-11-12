@@ -687,9 +687,14 @@ export default function ManagerVenuePage() {
             <h1>Venue & Hall Management</h1>
             <p>Manage your venue profile, define bookable halls, and verify the double-booking exclusion constraint.</p>
           </div>
-          <Link href="/admin" className="btn btn-outline" style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <ShieldCheck size={14} /> Super Admin Control Center
-          </Link>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <Link href="/vendors" className="btn btn-outline" style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <Sparkles size={14} /> Vendors Directory
+            </Link>
+            <Link href="/admin" className="btn btn-outline" style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <ShieldCheck size={14} /> Super Admin Control Center
+            </Link>
+          </div>
         </div>
       </header>
 

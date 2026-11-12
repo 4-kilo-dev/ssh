@@ -20,6 +20,7 @@ import {
   Search,
   ArrowRight,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 
 interface Account {
@@ -286,6 +287,9 @@ export default function SuperAdminPage() {
         </div>
 
         <div style={{ display: "flex", gap: "0.75rem" }}>
+          <Link href="/vendors" className="btn btn-outline" style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <Sparkles size={15} /> Vendors Directory
+          </Link>
           <Link href="/manager/venue" className="btn btn-outline" style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <Building2 size={15} /> Manager Workspace
           </Link>
