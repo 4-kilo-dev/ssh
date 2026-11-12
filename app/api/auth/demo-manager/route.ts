@@ -11,12 +11,25 @@ import { eq, or } from "drizzle-orm";
  */
 export async function POST(req: Request) {
   try {
-    const { managerId: preset } = await req.json().catch(() => ({ managerId: "A" }));
+    const { managerId: preset = "A" } = await req.json().catch(() => ({ managerId: "A" }));
 
-    const isB = preset === "B";
-    const telegramId = isB ? "tg_mgr_b" : "tg_mgr_a";
-    const phone = isB ? "+251911999902" : "+251911223344";
-    const name = isB ? "Kebede Manager B" : "Abebe Manager A";
+    let telegramId = "tg_mgr_a";
+    let phone = "+251911223344";
+    let name = "Abebe Kebede";
+
+    if (preset === "B") {
+      telegramId = "tg_mgr_b";
+      phone = "+251911999902";
+      name = "Kebede Tadesse";
+    } else if (preset === "C") {
+      telegramId = "tg_mgr_c";
+      phone = "+251911334455";
+      name = "Tigist Haile";
+    } else if (preset === "D") {
+      telegramId = "tg_mgr_d";
+      phone = "+251911556677";
+      name = "Dawit Zeleke";
+    }
 
     const db = getDb();
     let [account] = await db

@@ -89,8 +89,9 @@ export default function ManagerVenuePage() {
   const [hallCreating, setHallCreating] = useState(false);
 
   // Schedule & manual block state (Phase 4)
+  const todayStr = new Date().toISOString().split("T")[0];
   const [selectedHall, setSelectedHall] = useState<Hall | null>(null);
-  const [scheduleDate, setScheduleDate] = useState("2026-12-15");
+  const [scheduleDate, setScheduleDate] = useState(todayStr);
   const [timelineSlots, setTimelineSlots] = useState<{
     hour: number;
     timeLabel: string;
@@ -111,7 +112,7 @@ export default function ManagerVenuePage() {
   // Bookings & Lifecycle state (Phase 5)
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
-  const [testBookingDate, setTestBookingDate] = useState("2026-12-15");
+  const [testBookingDate, setTestBookingDate] = useState(todayStr);
   const [testBookingStart, setTestBookingStart] = useState("10:00");
   const [testBookingEnd, setTestBookingEnd] = useState("14:00");
   const [testSelectedHalls, setTestSelectedHalls] = useState<string[]>([]);
@@ -205,7 +206,7 @@ export default function ManagerVenuePage() {
     refreshData();
   }, []);
 
-  const switchDemoManager = async (preset: "A" | "B") => {
+  const switchDemoManager = async (preset: "A" | "B" | "C" | "D") => {
     setLoading(true);
     setStatusMessage(null);
     try {
@@ -216,9 +217,15 @@ export default function ManagerVenuePage() {
       });
       if (res.ok) {
         await refreshData();
+        const names: Record<string, string> = {
+          A: "Manager Abebe (Skylight)",
+          B: "Manager Kebede (Bellevue)",
+          C: "Manager Tigist (Golf Club)",
+          D: "Manager Dawit (Harmony)",
+        };
         setStatusMessage({
           type: "success",
-          text: `Switched session to ${preset === "A" ? "Manager A (Abebe)" : "Manager B (Kebede)"}`,
+          text: `Switched session to ${names[preset] || preset}`,
         });
       }
     } catch (err) {
@@ -555,24 +562,42 @@ export default function ManagerVenuePage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => switchDemoManager("A")}
             disabled={loading}
-            style={{ fontSize: "12px", padding: "6px 12px" }}
+            style={{ fontSize: "11px", padding: "5px 10px" }}
           >
-            Switch to Manager A
+            Skylight (Abebe)
           </button>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => switchDemoManager("B")}
             disabled={loading}
-            style={{ fontSize: "12px", padding: "6px 12px" }}
+            style={{ fontSize: "11px", padding: "5px 10px" }}
           >
-            Switch to Manager B
+            Bellevue (Kebede)
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => switchDemoManager("C")}
+            disabled={loading}
+            style={{ fontSize: "11px", padding: "5px 10px" }}
+          >
+            Golf Club (Tigist)
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => switchDemoManager("D")}
+            disabled={loading}
+            style={{ fontSize: "11px", padding: "5px 10px" }}
+          >
+            Harmony (Dawit)
           </button>
         </div>
       </div>
