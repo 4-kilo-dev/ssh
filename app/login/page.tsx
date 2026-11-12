@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Lock, LogOut, ShieldAlert, UserCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Building2, CheckCircle2, Lock, LogOut, ShieldAlert, UserCheck } from "lucide-react";
 
 interface Account {
   id: string;
@@ -13,8 +14,9 @@ interface Account {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [phone, setPhone] = useState("+251911223344");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("password123");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
@@ -50,8 +52,32 @@ export default function LoginPage() {
 
       setAccount(data.account);
       setPassword("");
+
+      // Automatically route to workspace if venue manager
+      if (data.account?.role === "venue_manager") {
+        router.push("/manager/venue");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to log in");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickDemoManager = async (preset: "A" | "B") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/demo-manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerId: preset }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed demo login");
+      router.push("/manager/venue");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed demo login");
     } finally {
       setLoading(false);
     }
@@ -152,9 +178,15 @@ export default function LoginPage() {
               <LogOut size={16} aria-hidden="true" />
               Sign Out
             </button>
-            <Link href="/" className="btn btn-primary">
-              Return Home <ArrowRight size={16} aria-hidden="true" />
-            </Link>
+            {account.role === "venue_manager" ? (
+              <Link href="/manager/venue" className="btn btn-primary">
+                Venue Workspace <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            ) : (
+              <Link href="/" className="btn btn-primary">
+                Return Home <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            )}
           </div>
         </div>
       ) : (
@@ -207,18 +239,34 @@ export default function LoginPage() {
             />
           </div>
 
-          <p className="small-note" style={{ marginTop: "12px" }}>
-            New user onboarded via Telegram? Click the onboarding link sent by the bot to set your password.
-          </p>
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "12px",
+              background: "var(--paper)",
+              borderRadius: "8px",
+              border: "1px solid var(--line)",
+              fontSize: "12px",
+            }}
+          >
+            <strong>Test Credentials:</strong> Phone: <code>+251911223344</code> / Password: <code>password123</code>
+          </div>
 
-          <div className="form-actions" style={{ marginTop: "24px" }}>
-            <Link href="/" className="btn btn-secondary">
-              Cancel
-            </Link>
+          <div className="form-actions" style={{ marginTop: "24px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => handleQuickDemoManager("A")}
+              className="btn btn-secondary"
+              disabled={loading}
+              style={{ fontSize: "12px" }}
+            >
+              1-Click Demo Manager Login
+            </button>
             <button
               type="submit"
               className="btn btn-primary"
               disabled={loading || !phone || !password}
+              style={{ marginLeft: "auto" }}
             >
               {loading ? "Signing in..." : "Sign In"}
               <ArrowRight size={16} aria-hidden="true" />

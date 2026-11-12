@@ -50,6 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mobile-nav-drawer-head"><strong>{t("brand", locale)}</strong><button className="mobile-nav-close" type="button" aria-label={t("menuClose", locale)} onClick={() => setMobileOpen(false)}><X size={21} aria-hidden="true" /></button></div>
           {mainLinks.map(([href, key]) => <Link key={href} className={pathname === href ? "active" : ""} href={href}>{t(key, locale)}</Link>)}
           <Link className={pathname.startsWith("/my-") || pathname === "/profile" ? "active" : ""} href={role === "customer" ? "/my-event" : "/sign-in"}>{t("myEvent", locale)}</Link>
+          <Link className={pathname.startsWith("/manager") ? "active" : ""} href="/manager/venue">Venue Manager</Link>
           <Link href={role === "vendor" ? "/vendor" : "/vendor/sign-in"}>{t("vendorArea", locale)}</Link>
           <Link href={role === "admin" ? "/admin" : "/admin/login"}>{t("admin", locale)}</Link>
         </nav>
@@ -60,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <select id="locale-select" className="locale-select" value={locale} aria-label={t("ariaLanguage", locale)} onChange={(e) => setLocale(e.target.value as "en" | "am")}>
             <option value="en">{t("languageEnglish", locale)}</option><option value="am">{t("languageAmharic", locale)}</option>
           </select>
-          <Link className="btn btn-primary sign-in-link" href="/sign-in">{t("signIn", locale)}</Link>
+          <Link className="btn btn-primary sign-in-link" href="/login">{t("signIn", locale)}</Link>
         </div>
       </div>
     </header>

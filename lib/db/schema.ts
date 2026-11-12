@@ -4,7 +4,7 @@
  * Phase 0: healthCheck table for pipeline verification.
  * Phase 1: accounts and credentials tables with identity-vs-credential separation.
  */
-import { pgTable, serial, text, timestamp, uuid, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, uuid, pgEnum, boolean, jsonb, integer, uniqueIndex } from "drizzle-orm/pg-core";
 
 // Phase 0: Health check table for pipeline verification
 export const healthCheck = pgTable("health_check", {
@@ -86,3 +86,58 @@ export const sessions = pgTable("sessions", {
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+// Phase 3: Venues table — owned by exactly one venue_manager
+export const venues = pgTable("venues", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  managerId: uuid("manager_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" })
+    .unique(),
+  name: text("name").notNull(),
+  area: text("area").notNull(),
+  type: text("type").notNull(),
+  description: text("description"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  policies: text("policies"),
+  amenities: jsonb("amenities").$type<string[]>().default([]),
+  photos: jsonb("photos").$type<string[]>().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Venue = typeof venues.$inferSelect;
+export type NewVenue = typeof venues.$inferInsert;
+
+// Phase 3: Hall settings enum
+export const hallSettingEnum = pgEnum("hall_setting", [
+  "indoor",
+  "covered-outdoor",
+  "uncovered-outdoor",
+]);
+
+export type HallSetting = (typeof hallSettingEnum.enumValues)[number];
+
+// Phase 3: Halls table — the bookable unit under a venue
+export const halls = pgTable(
+  "halls",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    venueId: uuid("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    capacity: integer("capacity").notNull(),
+    setting: hallSettingEnum("setting").notNull().default("indoor"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("halls_venue_id_name_unique_idx").on(table.venueId, table.name),
+  ]
+);
+
+export type Hall = typeof halls.$inferSelect;
+export type NewHall = typeof halls.$inferInsert;
