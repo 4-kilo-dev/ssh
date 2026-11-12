@@ -8,6 +8,13 @@
       "when": 1794471208610,
       "tag": "0000_mysterious_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794471674494,
+      "tag": "0001_mixed_sway",
+      "breakpoints": true
     }
   ]
 }
