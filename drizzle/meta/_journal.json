@@ -50,6 +50,13 @@
       "when": 1794477312583,
       "tag": "0006_glorious_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794480109246,
+      "tag": "0007_omniscient_silverclaw",
+      "breakpoints": true
     }
   ]
 }

@@ -237,3 +237,40 @@ export const bookingHalls = pgTable(
 
 export type BookingHall = typeof bookingHalls.$inferSelect;
 export type NewBookingHall = typeof bookingHalls.$inferInsert;
+
+// Phase 6: Venue Inquiry Conversations — pre-booking communication channel
+export const inquiryConversations = pgTable("inquiry_conversations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  venueId: uuid("venue_id")
+    .notNull()
+    .references(() => venues.id, { onDelete: "cascade" }),
+  customerId: uuid("customer_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  managerId: uuid("manager_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  subject: text("subject"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type InquiryConversation = typeof inquiryConversations.$inferSelect;
+export type NewInquiryConversation = typeof inquiryConversations.$inferInsert;
+
+// Phase 6: Inquiry Messages — ordered message thread within a conversation
+export const inquiryMessages = pgTable("inquiry_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => inquiryConversations.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type InquiryMessage = typeof inquiryMessages.$inferSelect;
+export type NewInquiryMessage = typeof inquiryMessages.$inferInsert;

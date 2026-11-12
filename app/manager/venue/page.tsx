@@ -22,6 +22,9 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  MessageSquare,
+  Send,
+  Reply,
 } from "lucide-react";
 
 interface Account {
@@ -65,6 +68,24 @@ interface BookingItem {
   cancellationReason: string | null;
   createdAt: string;
   halls: { id: string; hallId: string; slotClaimId: string }[];
+}
+
+interface InquiryItem {
+  id: string;
+  venueId: string;
+  customerId: string;
+  managerId: string;
+  subject: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface InquiryMessageItem {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
 }
 
 export default function ManagerVenuePage() {
@@ -120,6 +141,17 @@ export default function ManagerVenuePage() {
   const [testNotes, setTestNotes] = useState("Corporate annual conference");
   const [testCustomerPreset, setTestCustomerPreset] = useState<"A" | "B">("A");
   const [testSubmitting, setTestSubmitting] = useState(false);
+
+  // Inquiries & Conversations state (Phase 6)
+  const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
+  const [selectedInquiry, setSelectedInquiry] = useState<InquiryItem | null>(null);
+  const [inquiryMessages, setInquiryMessages] = useState<InquiryMessageItem[]>([]);
+  const [replyContent, setReplyContent] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const [simCustomer, setSimCustomer] = useState<"A" | "B">("A");
+  const [simSubject, setSimSubject] = useState("Audio & Catering Inquiry");
+  const [simMessage, setSimMessage] = useState("Hello! Does the hall allow our live band and outside pastry service?");
+  const [simSubmitting, setSimSubmitting] = useState(false);
 
   const loadHallSchedule = async (hallId: string, date: string) => {
     if (!venue) return;
@@ -188,10 +220,28 @@ export default function ManagerVenuePage() {
               const bookingsData = await bookingsRes.json();
               setBookings(Array.isArray(bookingsData) ? bookingsData : []);
             }
+
+            // Fetch inquiries for this venue
+            const inqRes = await fetch("/api/inquiries");
+            if (inqRes.ok) {
+              const inqData = await inqRes.json();
+              const list = Array.isArray(inqData) ? inqData : [];
+              setInquiries(list);
+              if (list.length > 0) {
+                setSelectedInquiry(list[0]);
+                loadInquiryMessages(list[0].id);
+              } else {
+                setSelectedInquiry(null);
+                setInquiryMessages([]);
+              }
+            }
           } else {
             setVenue(null);
             setHalls([]);
             setBookings([]);
+            setInquiries([]);
+            setSelectedInquiry(null);
+            setInquiryMessages([]);
           }
         }
       }
@@ -522,6 +572,105 @@ export default function ManagerVenuePage() {
       await loadBookings();
       if (selectedHall) await loadHallSchedule(selectedHall.id, scheduleDate);
       setTestSubmitting(false);
+    }
+  };
+
+  const loadInquiries = async () => {
+    try {
+      const res = await fetch("/api/inquiries");
+      if (res.ok) {
+        const data = await res.json();
+        setInquiries(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadInquiryMessages = async (convId: string) => {
+    try {
+      const res = await fetch(`/api/inquiries/${convId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInquiryMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectInquiry = (inq: InquiryItem) => {
+    setSelectedInquiry(inq);
+    loadInquiryMessages(inq.id);
+  };
+
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInquiry || !replyContent.trim()) return;
+    setSendingReply(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/inquiries/${selectedInquiry.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: replyContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send message");
+      setReplyContent("");
+      await loadInquiryMessages(selectedInquiry.id);
+      await loadInquiries();
+      setStatusMessage({ type: "success", text: "Reply sent to customer!" });
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Error sending reply" });
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const handleSendSimulatedInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venue || !simMessage.trim()) return;
+    setSimSubmitting(true);
+    setStatusMessage(null);
+    try {
+      // 1. Log in as customer
+      await fetch("/api/auth/demo-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userPreset: simCustomer }),
+      });
+
+      // 2. Send inquiry
+      const res = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venueId: venue.id,
+          subject: simSubject.trim() || "Venue Inquiry",
+          initialMessage: simMessage.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit inquiry");
+
+      setSimMessage("");
+      setSimSubject("");
+      setStatusMessage({
+        type: "success",
+        text: `Customer ${simCustomer === "A" ? "Dawit" : "Sara"} sent inquiry: "${data.subject}"!`,
+      });
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Error submitting inquiry" });
+    } finally {
+      // 3. Switch back to manager A
+      await fetch("/api/auth/demo-manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerId: "A" }),
+      });
+      await refreshData();
+      setSimSubmitting(false);
     }
   };
 
@@ -1520,6 +1669,252 @@ export default function ManagerVenuePage() {
                 >
                   <CalendarCheck size={15} aria-hidden="true" />
                   {testSubmitting ? "Submitting Booking..." : "Submit Booking Request as Customer"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Phase 6: Customer Inquiries & Conversations Card */}
+          <div className="card" style={{ padding: "24px", marginTop: "24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <MessageSquare size={20} style={{ color: "var(--teal)" }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px" }}>Customer Inquiries & Messages (Phase 6)</h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "13px", color: "var(--muted)" }}>
+                    Pre-booking inquiry threads between customers and this venue. Private messages are strictly authorized.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={loadInquiries}
+                className="btn btn-secondary"
+                style={{ fontSize: "12px", padding: "6px 12px" }}
+              >
+                Refresh Inquiries
+              </button>
+            </div>
+
+            {inquiries.length === 0 ? (
+              <div
+                style={{
+                  padding: "30px",
+                  textAlign: "center",
+                  background: "var(--paper)",
+                  borderRadius: "8px",
+                  border: "1px dashed var(--line)",
+                  color: "var(--muted)",
+                  fontSize: "13px",
+                }}
+              >
+                <MessageSquare size={28} style={{ margin: "0 auto 8px", opacity: 0.5 }} />
+                <p style={{ margin: 0 }}>No customer inquiries yet for this venue.</p>
+                <p style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                  Use the inquiry simulator form below to submit a question as a customer.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "16px" }}>
+                {/* Conversations List */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <h5 style={{ margin: "0 0 6px", fontSize: "12px", fontWeight: 700, color: "var(--muted)" }}>
+                    Inquiry Threads ({inquiries.length})
+                  </h5>
+                  {inquiries.map((inq) => {
+                    const isSelected = selectedInquiry?.id === inq.id;
+                    return (
+                      <button
+                        key={inq.id}
+                        type="button"
+                        onClick={() => handleSelectInquiry(inq)}
+                        style={{
+                          textAlign: "left",
+                          padding: "10px 12px",
+                          borderRadius: "6px",
+                          border: `1px solid ${isSelected ? "var(--teal)" : "var(--line)"}`,
+                          background: isSelected ? "var(--teal-soft)" : "var(--paper)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                        }}
+                      >
+                        <strong style={{ fontSize: "13px", color: isSelected ? "var(--teal-dark)" : "var(--ink)" }}>
+                          {inq.subject || "Venue Inquiry"}
+                        </strong>
+                        <span style={{ fontSize: "11px", color: "var(--muted)" }}>
+                          From: {inq.customerId.slice(0, 8)} • {new Date(inq.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Conversation Transcript Pane */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    background: "var(--paper)",
+                    borderRadius: "8px",
+                    border: "1px solid var(--line)",
+                    padding: "16px",
+                  }}
+                >
+                  {selectedInquiry ? (
+                    <>
+                      <div style={{ borderBottom: "1px solid var(--line)", paddingBottom: "10px", marginBottom: "12px" }}>
+                        <h4 style={{ margin: 0, fontSize: "14px" }}>{selectedInquiry.subject || "Inquiry Details"}</h4>
+                        <span style={{ fontSize: "11px", color: "var(--muted)" }}>
+                          Thread #{selectedInquiry.id.slice(0, 8)} • Customer: {selectedInquiry.customerId.slice(0, 8)}
+                        </span>
+                      </div>
+
+                      {/* Messages Transcript */}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "10px",
+                          maxHeight: "260px",
+                          overflowY: "auto",
+                          paddingRight: "6px",
+                          marginBottom: "14px",
+                        }}
+                      >
+                        {inquiryMessages.map((msg) => {
+                          const isManagerSender = msg.senderId === account?.id || msg.senderId === venue.managerId;
+                          return (
+                            <div
+                              key={msg.id}
+                              style={{
+                                alignSelf: isManagerSender ? "flex-end" : "flex-start",
+                                maxWidth: "80%",
+                                background: isManagerSender ? "var(--teal-soft)" : "var(--surface)",
+                                border: `1px solid ${isManagerSender ? "var(--teal)" : "var(--line)"}`,
+                                borderRadius: "8px",
+                                padding: "8px 12px",
+                              }}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "3px" }}>
+                                <span
+                                  style={{
+                                    fontSize: "10px",
+                                    fontWeight: 700,
+                                    color: isManagerSender ? "var(--teal-dark)" : "var(--muted)",
+                                  }}
+                                >
+                                  {isManagerSender ? "You (Manager)" : "Customer"}
+                                </span>
+                                <span style={{ fontSize: "10px", color: "var(--muted)" }}>
+                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: "13px", whiteSpace: "pre-wrap" }}>{msg.content}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Reply Form */}
+                      <form onSubmit={handleSendReply} style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                        <div style={{ flex: 1 }}>
+                          <input
+                            className="field"
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder="Type a reply to the customer..."
+                            required
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="btn btn-primary"
+                          disabled={sendingReply || !replyContent.trim()}
+                          style={{ padding: "8px 14px", fontSize: "12px" }}
+                        >
+                          <Send size={13} aria-hidden="true" />
+                          {sendingReply ? "Sending..." : "Reply"}
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "var(--muted)", padding: "40px 0" }}>
+                      Select a conversation on the left to read messages.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Test Inquiry Simulator */}
+            <form
+              onSubmit={handleSendSimulatedInquiry}
+              style={{
+                marginTop: "20px",
+                padding: "16px",
+                background: "var(--paper)",
+                borderRadius: "8px",
+                border: "1px solid var(--line)",
+              }}
+            >
+              <h5 style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: 700 }}>
+                Simulate Customer Sending an Inquiry to this Venue
+              </h5>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
+                <div>
+                  <label className="label" htmlFor="sim-cust" style={{ fontSize: "11px" }}>
+                    From Customer
+                  </label>
+                  <select
+                    id="sim-cust"
+                    className="field"
+                    value={simCustomer}
+                    onChange={(e) => setSimCustomer(e.target.value as "A" | "B")}
+                  >
+                    <option value="A">Customer Dawit (+251915112233)</option>
+                    <option value="B">Customer Sara (+251915999902)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label" htmlFor="sim-subj" style={{ fontSize: "11px" }}>
+                    Subject
+                  </label>
+                  <input
+                    id="sim-subj"
+                    className="field"
+                    value={simSubject}
+                    onChange={(e) => setSimSubject(e.target.value)}
+                    placeholder="e.g. Wedding decor policy"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: "10px" }}>
+                <label className="label" htmlFor="sim-msg" style={{ fontSize: "11px" }}>
+                  Message
+                </label>
+                <input
+                  id="sim-msg"
+                  className="field"
+                  value={simMessage}
+                  onChange={(e) => setSimMessage(e.target.value)}
+                  placeholder="e.g. Can we bring our own lighting and florist?"
+                  required
+                />
+              </div>
+
+              <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={simSubmitting || !simMessage.trim()}
+                  style={{ padding: "6px 14px", fontSize: "12px" }}
+                >
+                  <Send size={13} aria-hidden="true" />
+                  {simSubmitting ? "Sending Inquiry..." : "Send Inquiry as Customer"}
                 </button>
               </div>
             </form>

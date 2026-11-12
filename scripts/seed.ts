@@ -26,6 +26,8 @@ import {
   slotClaims,
   bookings,
   bookingHalls,
+  inquiryConversations,
+  inquiryMessages,
 } from "../lib/db/schema";
 import { createAccount, setPassword } from "../lib/services/account-service";
 import { createVenue } from "../lib/services/venue-service";
@@ -36,6 +38,10 @@ import {
   cancelBooking,
 } from "../lib/services/booking-service";
 import { createSlotBlock } from "../lib/services/slot-block-service";
+import {
+  createConversation,
+  sendMessage,
+} from "../lib/services/inquiry-service";
 
 function getRelativeDate(daysOffset: number, hour: number = 10, minute: number = 0): Date {
   const d = new Date();
@@ -51,6 +57,8 @@ async function main() {
 
   // 1. Clean existing records in reverse dependency order
   console.log("🧹 Cleaning existing marketplace data...");
+  await db.delete(inquiryMessages);
+  await db.delete(inquiryConversations);
   await db.delete(bookingHalls);
   await db.delete(bookings);
   await db.delete(slotClaims);
@@ -409,6 +417,51 @@ async function main() {
     managerId: mgrTigist.id,
   });
   console.log(`✓ [SLOT-BLOCK] Golf Club Fairway Lawn: Tomorrow 06:00 - 11:00 (Turf Care)`);
+
+  // 7. Seed Venue Inquiry Conversations & Messages (Phase 6)
+  console.log("\n💬 Seeding Pre-Booking Inquiry Conversations...");
+
+  // Inquiry 1: Sara asks Skylight about Coffee Ceremony & Live Band
+  const inq1 = await createConversation({
+    venueId: venueSkylight.id,
+    customerId: custSara.id,
+    subject: "Traditional Coffee Ceremony & Live Band Setup",
+    initialMessage: "Greetings Abebe, does the Imperial Ballroom package allow setting up a dedicated traditional Ethiopian coffee ceremony in the pre-function area, and can our live band soundcheck at 14:00?",
+  });
+  await sendMessage({
+    conversationId: inq1.id,
+    senderId: mgrAbebe.id,
+    content: "Selam Sara! Yes, we have a dedicated granite-floored foyer specifically configured for traditional coffee setups with adequate ventilation. Band soundchecks are welcome from 13:30 onwards.",
+  });
+  await sendMessage({
+    conversationId: inq1.id,
+    senderId: custSara.id,
+    content: "Wonderful! We will finalize our guest list and submit a booking request for the weekend.",
+  });
+  console.log(`✓ [INQUIRY] Skylight: 3 messages between Sara and Abebe ("Traditional Coffee Ceremony")`);
+
+  // Inquiry 2: Yared asks Bellevue about Parking & Security
+  const inq2 = await createConversation({
+    venueId: venueBellevue.id,
+    customerId: custYared.id,
+    subject: "Guest Parking & Bridal Suite Access",
+    initialMessage: "Hello Kebede, we are anticipating around 70 vehicles for our evening reception. Is there overflow parking with security guards?",
+  });
+  await sendMessage({
+    conversationId: inq2.id,
+    senderId: mgrKebede.id,
+    content: "Good afternoon Yared. We have 60 secured spots in our lower gated lot, plus a partnership with the neighboring commercial lot for 40 additional spaces guarded by our security team.",
+  });
+  console.log(`✓ [INQUIRY] Bellevue: 2 messages between Yared and Kebede ("Guest Parking")`);
+
+  // Inquiry 3: Elias asks Golf Club about Marquee Tents
+  const inq3 = await createConversation({
+    venueId: venueGolf.id,
+    customerId: custElias.id,
+    subject: "High-Peak Marquee Setup on Fairway Lawn",
+    initialMessage: "Hello Tigist, if we rent the Fairway Grand Lawn for a charity event, does your team provide ground anchoring for heavy hexagonal marquees?",
+  });
+  console.log(`✓ [INQUIRY] Golf Club: 1 message from Elias ("High-Peak Marquee Setup")`);
 
   console.log("\n========================================================");
   console.log("🎉 SEEDING COMPLETED SUCCESSFULLY!");
