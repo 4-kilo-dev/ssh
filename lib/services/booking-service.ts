@@ -29,6 +29,7 @@ import {
   type BookingHall,
 } from "../db/schema";
 import { getVenueById } from "./venue-service";
+import { logAuditEvent } from "./audit-service";
 
 export interface BookingWithHalls extends Booking {
   halls: BookingHall[];
@@ -103,7 +104,7 @@ export async function createBooking(input: CreateBookingInput): Promise<BookingW
   }
 
   // Atomic multi-hall booking in transaction
-  return await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     // 1. Insert parent booking record
     const [booking] = await tx
       .insert(bookings)
@@ -162,6 +163,23 @@ export async function createBooking(input: CreateBookingInput): Promise<BookingW
       halls: createdHalls,
     };
   });
+
+  await logAuditEvent({
+    actorId: input.customerId,
+    action: "booking.created",
+    targetType: "booking",
+    targetId: created.id,
+    metadata: {
+      venueId: input.venueId,
+      hallIds: input.hallIds,
+      startTime: input.startTime.toISOString(),
+      endTime: input.endTime.toISOString(),
+      guestCount: input.guestCount ?? 0,
+      notes: input.notes?.trim() ?? null,
+    },
+  });
+
+  return created;
 }
 
 /**
@@ -282,6 +300,16 @@ export async function confirmBooking(input: ConfirmBookingInput): Promise<Bookin
     .where(eq(bookings.id, input.bookingId))
     .returning();
 
+  await logAuditEvent({
+    actorId: input.callerId,
+    action: "booking.confirmed",
+    targetType: "booking",
+    targetId: input.bookingId,
+    metadata: {
+      venueId: booking.venueId,
+    },
+  });
+
   return {
     ...updated,
     halls: booking.halls,
@@ -316,7 +344,7 @@ export async function cancelBooking(input: CancelBookingInput): Promise<BookingW
 
   const db = getDb();
 
-  return await db.transaction(async (tx) => {
+  const cancelled = await db.transaction(async (tx) => {
     // 1. Update booking status to 'cancelled'
     const [updated] = await tx
       .update(bookings)
@@ -349,4 +377,17 @@ export async function cancelBooking(input: CancelBookingInput): Promise<BookingW
       halls: attachedHalls,
     };
   });
+
+  await logAuditEvent({
+    actorId: input.callerId,
+    action: "booking.cancelled",
+    targetType: "booking",
+    targetId: input.bookingId,
+    metadata: {
+      reason: input.reason?.trim() ?? null,
+      venueId: booking.venueId,
+    },
+  });
+
+  return cancelled;
 }

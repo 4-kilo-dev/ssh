@@ -15,6 +15,7 @@ import {
   getSlotClaimById,
   getSlotClaimsByHall,
 } from "./slot-claim-service";
+import { logAuditEvent } from "./audit-service";
 import type { SlotClaim } from "../db/schema";
 
 export interface CreateSlotBlockInput {
@@ -40,7 +41,7 @@ export async function createSlotBlock(input: CreateSlotBlockInput): Promise<Slot
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
-  return await createSlotClaim({
+  const claim = await createSlotClaim({
     hallId: input.hallId,
     startTime: input.startTime,
     endTime: input.endTime,
@@ -48,6 +49,21 @@ export async function createSlotBlock(input: CreateSlotBlockInput): Promise<Slot
     reason: input.reason ?? "Manual off-platform block",
     createdById: input.managerId,
   });
+
+  await logAuditEvent({
+    actorId: input.managerId,
+    action: "slot_block.created",
+    targetType: "slot_block",
+    targetId: claim.id,
+    metadata: {
+      hallId: input.hallId,
+      reason: input.reason ?? "Manual off-platform block",
+      startTime: input.startTime.toISOString(),
+      endTime: input.endTime.toISOString(),
+    },
+  });
+
+  return claim;
 }
 
 /**
@@ -55,9 +71,13 @@ export async function createSlotBlock(input: CreateSlotBlockInput): Promise<Slot
  * Enforces ownership boundary: caller `managerId` must own the hall's venue.
  */
 export async function releaseSlotBlock(
-  blockId: string,
-  managerId: string
+  blockIdOrInput: string | { blockId: string; managerId: string },
+  managerIdArg?: string
 ): Promise<SlotClaim> {
+  const blockId = typeof blockIdOrInput === "object" ? blockIdOrInput.blockId : blockIdOrInput;
+  const managerId =
+    typeof blockIdOrInput === "object" ? blockIdOrInput.managerId : (managerIdArg as string);
+
   const claim = await getSlotClaimById(blockId);
   if (!claim) {
     throw new Error("Slot block not found");
@@ -73,7 +93,19 @@ export async function releaseSlotBlock(
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
-  return await releaseSlotClaim(blockId, managerId);
+  const released = await releaseSlotClaim(blockId, managerId);
+
+  await logAuditEvent({
+    actorId: managerId,
+    action: "slot_block.released",
+    targetType: "slot_block",
+    targetId: blockId,
+    metadata: {
+      hallId: claim.hallId,
+    },
+  });
+
+  return released;
 }
 
 /**

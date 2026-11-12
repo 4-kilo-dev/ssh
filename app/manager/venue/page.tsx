@@ -25,6 +25,7 @@ import {
   MessageSquare,
   Send,
   Reply,
+  ShieldCheck,
 } from "lucide-react";
 
 interface Account {
@@ -677,12 +678,19 @@ export default function ManagerVenuePage() {
   return (
     <div className="page-stack" style={{ maxWidth: "880px", margin: "0 auto" }}>
       <header className="page-heading">
-        <p className="eyebrow">
-          <Building2 size={14} aria-hidden="true" />
-          <span>Manager Workspace • Phase 3 & 4</span>
-        </p>
-        <h1>Venue & Hall Management</h1>
-        <p>Manage your venue profile, define bookable halls, and verify the double-booking exclusion constraint.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+          <div>
+            <p className="eyebrow">
+              <Building2 size={14} aria-hidden="true" />
+              <span>Manager Workspace • Phase 3, 4, 5 & 6</span>
+            </p>
+            <h1>Venue & Hall Management</h1>
+            <p>Manage your venue profile, define bookable halls, and verify the double-booking exclusion constraint.</p>
+          </div>
+          <Link href="/admin" className="btn btn-outline" style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <ShieldCheck size={14} /> Super Admin Control Center
+          </Link>
+        </div>
       </header>
 
       {/* Quick Session Switcher Strip */}

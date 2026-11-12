@@ -28,6 +28,8 @@ import {
   bookingHalls,
   inquiryConversations,
   inquiryMessages,
+  supportTickets,
+  auditLogs,
 } from "../lib/db/schema";
 import { createAccount, setPassword } from "../lib/services/account-service";
 import { createVenue } from "../lib/services/venue-service";
@@ -42,6 +44,7 @@ import {
   createConversation,
   sendMessage,
 } from "../lib/services/inquiry-service";
+import { createTicket, updateTicketStatus } from "../lib/services/ticket-service";
 
 function getRelativeDate(daysOffset: number, hour: number = 10, minute: number = 0): Date {
   const d = new Date();
@@ -57,6 +60,8 @@ async function main() {
 
   // 1. Clean existing records in reverse dependency order
   console.log("🧹 Cleaning existing marketplace data...");
+  await db.delete(supportTickets);
+  await db.delete(auditLogs);
   await db.delete(inquiryMessages);
   await db.delete(inquiryConversations);
   await db.delete(bookingHalls);
@@ -462,6 +467,52 @@ async function main() {
     initialMessage: "Hello Tigist, if we rent the Fairway Grand Lawn for a charity event, does your team provide ground anchoring for heavy hexagonal marquees?",
   });
   console.log(`✓ [INQUIRY] Golf Club: 1 message from Elias ("High-Peak Marquee Setup")`);
+
+  // 7. Seed Support Tickets across states
+  console.log("\n🎫 Creating Support Tickets...");
+  const t1 = await createTicket({
+    authorId: custSara.id,
+    category: "booking_dispute",
+    subject: "Deposit reconciliation for Skylight Ballroom",
+    message: "I sent the 30% advance via CBE Birr on Tuesday, but the venue status hasn't transitioned to confirmed yet.",
+  });
+  console.log(`✓ [TICKET open] Sara: Deposit reconciliation`);
+
+  const t2 = await createTicket({
+    authorId: mgrAbebe.id,
+    category: "venue_verification",
+    subject: "Commercial business license renewal",
+    message: "Uploaded renewed Addis Ababa Trade Bureau license for Skylight Hotel. Please verify for our badge.",
+  });
+  await updateTicketStatus({
+    ticketId: t2.id,
+    callerId: admin.id,
+    status: "in_progress",
+    adminNotes: "Document checked against ministry database, awaiting final tax clearance.",
+  });
+  console.log(`✓ [TICKET in_progress] Abebe: Commercial license renewal`);
+
+  const t3 = await createTicket({
+    authorId: custYared.id,
+    category: "billing",
+    subject: "VAT receipt request for corporate summit",
+    message: "Our finance team requires an electronic VAT invoice with TIN 0038491823.",
+  });
+  await updateTicketStatus({
+    ticketId: t3.id,
+    callerId: admin.id,
+    status: "resolved",
+    adminNotes: "Official VAT receipt issued and dispatched to finance team.",
+  });
+  console.log(`✓ [TICKET resolved] Yared: VAT receipt request`);
+
+  const t4 = await createTicket({
+    authorId: mgrTigist.id,
+    category: "technical",
+    subject: "Fairway Lawn calendar sync",
+    message: "Off-platform golf tournament block placed for next weekend seems to show on the public page correctly. Confirming if notification emails are sent.",
+  });
+  console.log(`✓ [TICKET open] Tigist: Fairway Lawn calendar sync`);
 
   console.log("\n========================================================");
   console.log("🎉 SEEDING COMPLETED SUCCESSFULLY!");
