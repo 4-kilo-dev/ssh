@@ -18,6 +18,10 @@ import {
   Calendar,
   Clock,
   Unlock,
+  CalendarCheck,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 
 interface Account {
@@ -47,6 +51,20 @@ interface Hall {
   capacity: number;
   setting: string;
   notes?: string | null;
+}
+
+interface BookingItem {
+  id: string;
+  venueId: string;
+  customerId: string;
+  status: "requested" | "confirmed" | "cancelled";
+  startTime: string;
+  endTime: string;
+  guestCount: number;
+  notes: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  halls: { id: string; hallId: string; slotClaimId: string }[];
 }
 
 export default function ManagerVenuePage() {
@@ -89,6 +107,18 @@ export default function ManagerVenuePage() {
   const [blockEndHour, setBlockEndHour] = useState("18:00");
   const [blockReason, setBlockReason] = useState("Off-platform wedding reception");
   const [blockSubmitting, setBlockSubmitting] = useState(false);
+
+  // Bookings & Lifecycle state (Phase 5)
+  const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [testBookingDate, setTestBookingDate] = useState("2026-12-15");
+  const [testBookingStart, setTestBookingStart] = useState("10:00");
+  const [testBookingEnd, setTestBookingEnd] = useState("14:00");
+  const [testSelectedHalls, setTestSelectedHalls] = useState<string[]>([]);
+  const [testGuestCount, setTestGuestCount] = useState("250");
+  const [testNotes, setTestNotes] = useState("Corporate annual conference");
+  const [testCustomerPreset, setTestCustomerPreset] = useState<"A" | "B">("A");
+  const [testSubmitting, setTestSubmitting] = useState(false);
 
   const loadHallSchedule = async (hallId: string, date: string) => {
     if (!venue) return;
@@ -146,10 +176,21 @@ export default function ManagerVenuePage() {
             if (hallsRes.ok) {
               const hallsData = await hallsRes.json();
               setHalls(hallsData.halls || []);
+              if (hallsData.halls?.length > 0 && testSelectedHalls.length === 0) {
+                setTestSelectedHalls([hallsData.halls[0].id]);
+              }
+            }
+
+            // Fetch bookings for this venue
+            const bookingsRes = await fetch("/api/bookings");
+            if (bookingsRes.ok) {
+              const bookingsData = await bookingsRes.json();
+              setBookings(Array.isArray(bookingsData) ? bookingsData : []);
             }
           } else {
             setVenue(null);
             setHalls([]);
+            setBookings([]);
           }
         }
       }
@@ -350,6 +391,130 @@ export default function ManagerVenuePage() {
       await loadHallSchedule(selectedHall.id, scheduleDate);
     } catch (err) {
       setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error releasing block" });
+    }
+  };
+
+  const loadBookings = async () => {
+    setBookingsLoading(true);
+    try {
+      const res = await fetch("/api/bookings");
+      if (res.ok) {
+        const data = await res.json();
+        setBookings(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const handleConfirmBooking = async (bookingId: string) => {
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/confirm`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to confirm booking");
+      }
+      setStatusMessage({
+        type: "success",
+        text: `Booking ${bookingId.slice(0, 8)} confirmed! Manager re-verification complete.`,
+      });
+      await loadBookings();
+      if (selectedHall) await loadHallSchedule(selectedHall.id, scheduleDate);
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Confirmation failed" });
+    }
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
+    const reason = prompt("Enter cancellation reason (optional):") ?? undefined;
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to cancel booking");
+      }
+      setStatusMessage({
+        type: "success",
+        text: `Booking ${bookingId.slice(0, 8)} cancelled. All slot claims released immediately.`,
+      });
+      await loadBookings();
+      if (selectedHall) await loadHallSchedule(selectedHall.id, scheduleDate);
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message || "Cancellation failed" });
+    }
+  };
+
+  const handleCreateCustomerBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venue || testSelectedHalls.length === 0) {
+      setStatusMessage({ type: "error", text: "Please select at least one hall to book." });
+      return;
+    }
+
+    setTestSubmitting(true);
+    setStatusMessage(null);
+
+    try {
+      // 1. Temporarily switch session to the demo customer
+      const custAuthRes = await fetch("/api/auth/demo-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userPreset: testCustomerPreset }),
+      });
+      if (!custAuthRes.ok) throw new Error("Could not log in as test customer");
+
+      // 2. Submit booking as customer
+      const startIso = new Date(`${testBookingDate}T${testBookingStart}:00+03:00`).toISOString();
+      const endIso = new Date(`${testBookingDate}T${testBookingEnd}:00+03:00`).toISOString();
+
+      const bookingRes = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venueId: venue.id,
+          hallIds: testSelectedHalls,
+          startTime: startIso,
+          endTime: endIso,
+          guestCount: Number(testGuestCount) || 0,
+          notes: testNotes,
+        }),
+      });
+
+      const data = await bookingRes.json();
+      if (!bookingRes.ok) {
+        throw new Error(data.error || "Booking request rejected");
+      }
+
+      setStatusMessage({
+        type: "success",
+        text: `Booking requested by Customer ${testCustomerPreset === "A" ? "Dawit" : "Sara"} for ${testSelectedHalls.length} hall(s) (${testBookingStart} - ${testBookingEnd})! Initial status: 'Requested'.`,
+      });
+    } catch (err: any) {
+      setStatusMessage({
+        type: "error",
+        text: err.message || "Failed to create booking",
+      });
+    } finally {
+      // 3. Switch back to manager session so manager workspace can review
+      await fetch("/api/auth/demo-manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerId: "A" }),
+      });
+      await refreshData();
+      await loadBookings();
+      if (selectedHall) await loadHallSchedule(selectedHall.id, scheduleDate);
+      setTestSubmitting(false);
     }
   };
 
@@ -942,6 +1107,394 @@ export default function ManagerVenuePage() {
                 >
                   <Plus size={15} aria-hidden="true" />
                   {hallCreating ? "Adding Hall..." : "Add Hall"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Phase 5: Booking Lifecycle & Re-verification Card */}
+          <div className="card" style={{ padding: "24px", marginTop: "24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <CalendarCheck size={20} style={{ color: "var(--teal)" }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px" }}>Booking Requests & Lifecycle (Phase 5)</h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "13px", color: "var(--muted)" }}>
+                    Re-verify availability and transition customer booking requests between Requested, Confirmed, and Cancelled.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={loadBookings}
+                className="btn btn-secondary"
+                disabled={bookingsLoading}
+                style={{ fontSize: "12px", padding: "6px 12px" }}
+              >
+                {bookingsLoading ? "Refreshing..." : "Refresh Bookings"}
+              </button>
+            </div>
+
+            {bookings.length === 0 ? (
+              <div
+                style={{
+                  padding: "30px",
+                  textAlign: "center",
+                  background: "var(--paper)",
+                  borderRadius: "8px",
+                  border: "1px dashed var(--line)",
+                  color: "var(--muted)",
+                  fontSize: "13px",
+                }}
+              >
+                <CalendarCheck size={28} style={{ margin: "0 auto 8px", opacity: 0.5 }} />
+                <p style={{ margin: 0 }}>No booking requests yet for this venue.</p>
+                <p style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                  Use the customer booking simulator below to submit a multi-hall reservation request.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {bookings.map((b) => {
+                  const bHalls = b.halls.map((bh) => {
+                    const found = halls.find((h) => h.id === bh.hallId);
+                    return found ? found.name : bh.hallId.slice(0, 8);
+                  });
+
+                  const isRequested = b.status === "requested";
+                  const isConfirmed = b.status === "confirmed";
+                  const isCancelled = b.status === "cancelled";
+
+                  return (
+                    <div
+                      key={b.id}
+                      style={{
+                        padding: "16px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--line)",
+                        background: "var(--paper)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 700 }}>
+                            Booking #{b.id.slice(0, 8)}
+                          </span>
+                          <span style={{ fontSize: "12px", color: "var(--muted)" }}>
+                            • {new Date(b.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        <div>
+                          {isRequested && (
+                            <span
+                              className="pill"
+                              style={{
+                                background: "var(--warning-bg)",
+                                color: "var(--warning)",
+                                border: "1px solid var(--warning)",
+                                fontWeight: 700,
+                                fontSize: "11px",
+                              }}
+                            >
+                              Requested (Awaiting Re-verification)
+                            </span>
+                          )}
+                          {isConfirmed && (
+                            <span
+                              className="pill"
+                              style={{
+                                background: "var(--success-bg)",
+                                color: "var(--success)",
+                                border: "1px solid var(--success)",
+                                fontWeight: 700,
+                                fontSize: "11px",
+                              }}
+                            >
+                              Confirmed / Filled
+                            </span>
+                          )}
+                          {isCancelled && (
+                            <span
+                              className="pill"
+                              style={{
+                                background: "var(--surface)",
+                                color: "var(--muted)",
+                                border: "1px solid var(--line)",
+                                fontSize: "11px",
+                              }}
+                            >
+                              Cancelled
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px", fontSize: "13px" }}>
+                        <div>
+                          <span style={{ color: "var(--muted)", fontSize: "11px", display: "block" }}>Date & Time</span>
+                          <strong>
+                            {new Date(b.startTime).toLocaleDateString()} •{" "}
+                            {new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
+                            {new Date(b.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span style={{ color: "var(--muted)", fontSize: "11px", display: "block" }}>Halls Booked</span>
+                          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "2px" }}>
+                            {bHalls.map((hName, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  background: "var(--teal-soft)",
+                                  color: "var(--teal-dark)",
+                                  padding: "2px 8px",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {hName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span style={{ color: "var(--muted)", fontSize: "11px", display: "block" }}>Guest Count & Notes</span>
+                          <span>{b.guestCount > 0 ? `${b.guestCount} guests` : "Not specified"}</span>
+                          {b.notes && <span style={{ color: "var(--muted)", marginLeft: "6px" }}>({b.notes})</span>}
+                        </div>
+                      </div>
+
+                      {isCancelled && b.cancellationReason && (
+                        <div style={{ fontSize: "12px", color: "var(--danger)", background: "var(--danger-bg)", padding: "6px 10px", borderRadius: "4px" }}>
+                          Cancellation Reason: {b.cancellationReason}
+                        </div>
+                      )}
+
+                      {/* Manager Action Buttons */}
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
+                        {isRequested && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmBooking(b.id)}
+                              className="btn btn-primary"
+                              style={{ padding: "6px 12px", fontSize: "12px" }}
+                            >
+                              <CheckCircle2 size={13} aria-hidden="true" />
+                              Re-verify & Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCancelBooking(b.id)}
+                              className="btn btn-outline"
+                              style={{ padding: "6px 12px", fontSize: "12px", color: "var(--danger)" }}
+                            >
+                              <XCircle size={13} aria-hidden="true" />
+                              Decline Request
+                            </button>
+                          </>
+                        )}
+
+                        {isConfirmed && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelBooking(b.id)}
+                            className="btn btn-outline"
+                            style={{ padding: "6px 12px", fontSize: "12px", color: "var(--danger)" }}
+                          >
+                            <XCircle size={13} aria-hidden="true" />
+                            Cancel Booking
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Phase 5: Customer Booking Request Simulator Card */}
+          <div className="card" style={{ padding: "24px", marginTop: "24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+              <Users size={20} style={{ color: "var(--teal)" }} />
+              <div>
+                <h3 style={{ margin: 0, fontSize: "17px" }}>Customer Booking Request Simulator (Phase 5)</h3>
+                <p style={{ margin: "2px 0 0", fontSize: "13px", color: "var(--muted)" }}>
+                  Submit a multi-hall booking request as a customer to test atomic reservation and double-booking collision defense.
+                </p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleCreateCustomerBooking}
+              style={{
+                background: "var(--paper)",
+                padding: "20px",
+                borderRadius: "8px",
+                border: "1px solid var(--line)",
+              }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                <div>
+                  <label className="label" htmlFor="cust-preset">
+                    Acting Customer
+                  </label>
+                  <select
+                    id="cust-preset"
+                    className="field"
+                    value={testCustomerPreset}
+                    onChange={(e) => setTestCustomerPreset(e.target.value as "A" | "B")}
+                  >
+                    <option value="A">Customer Dawit (+251915112233)</option>
+                    <option value="B">Customer Sara (+251915999902)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="cust-date">
+                    Date
+                  </label>
+                  <input
+                    id="cust-date"
+                    className="field"
+                    type="date"
+                    value={testBookingDate}
+                    onChange={(e) => setTestBookingDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="cust-start">
+                    Start Time
+                  </label>
+                  <select
+                    id="cust-start"
+                    className="field"
+                    value={testBookingStart}
+                    onChange={(e) => setTestBookingStart(e.target.value)}
+                  >
+                    {Array.from({ length: 14 }, (_, i) => i + 8).map((h) => {
+                      const val = `${String(h).padStart(2, "0")}:00`;
+                      return <option key={val} value={val}>{val}</option>;
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="cust-end">
+                    End Time
+                  </label>
+                  <select
+                    id="cust-end"
+                    className="field"
+                    value={testBookingEnd}
+                    onChange={(e) => setTestBookingEnd(e.target.value)}
+                  >
+                    {Array.from({ length: 14 }, (_, i) => i + 9).map((h) => {
+                      const val = `${String(h).padStart(2, "0")}:00`;
+                      return <option key={val} value={val}>{val}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {/* Multi-Hall Checkboxes */}
+              <div style={{ marginTop: "14px" }}>
+                <label className="label" style={{ marginBottom: "6px" }}>
+                  Select Halls to Book Atomically ({testSelectedHalls.length} selected)
+                </label>
+                {halls.length === 0 ? (
+                  <p style={{ fontSize: "12px", color: "var(--muted)", margin: 0 }}>
+                    No halls defined yet. Please add at least one hall above first.
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                    {halls.map((h) => {
+                      const isChecked = testSelectedHalls.includes(h.id);
+                      return (
+                        <label
+                          key={h.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 12px",
+                            background: isChecked ? "var(--teal-soft)" : "var(--surface)",
+                            border: `1px solid ${isChecked ? "var(--teal)" : "var(--line)"}`,
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            fontWeight: isChecked ? 600 : 400,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTestSelectedHalls([...testSelectedHalls, h.id]);
+                              } else {
+                                setTestSelectedHalls(testSelectedHalls.filter((id) => id !== h.id));
+                              }
+                            }}
+                          />
+                          <span>{h.name}</span>
+                          <span style={{ color: "var(--muted)", fontSize: "11px" }}>
+                            ({h.capacity} cap, {h.setting})
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px", marginTop: "14px" }}>
+                <div>
+                  <label className="label" htmlFor="cust-guests">
+                    Guest Count
+                  </label>
+                  <input
+                    id="cust-guests"
+                    className="field"
+                    type="number"
+                    min={1}
+                    value={testGuestCount}
+                    onChange={(e) => setTestGuestCount(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="cust-notes">
+                    Customer Notes
+                  </label>
+                  <input
+                    id="cust-notes"
+                    className="field"
+                    value={testNotes}
+                    onChange={(e) => setTestNotes(e.target.value)}
+                    placeholder="e.g. Wedding banquet with catering"
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={testSubmitting || testSelectedHalls.length === 0}
+                  style={{ padding: "8px 16px" }}
+                >
+                  <CalendarCheck size={15} aria-hidden="true" />
+                  {testSubmitting ? "Submitting Booking..." : "Submit Booking Request as Customer"}
                 </button>
               </div>
             </form>

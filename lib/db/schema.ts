@@ -179,3 +179,61 @@ export const slotClaims = pgTable("slot_claims", {
 
 export type SlotClaim = typeof slotClaims.$inferSelect;
 export type NewSlotClaim = typeof slotClaims.$inferInsert;
+
+// Phase 5: Booking Lifecycle Enums
+export const bookingStatusEnum = pgEnum("booking_status", [
+  "requested",
+  "confirmed",
+  "cancelled",
+]);
+
+export type BookingStatus = (typeof bookingStatusEnum.enumValues)[number];
+
+// Phase 5: Bookings table — requests made by customers for a venue over a time range
+export const bookings = pgTable("bookings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  venueId: uuid("venue_id")
+    .notNull()
+    .references(() => venues.id, { onDelete: "cascade" }),
+  customerId: uuid("customer_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  status: bookingStatusEnum("status").notNull().default("requested"),
+  startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+  endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+  guestCount: integer("guest_count").notNull().default(0),
+  notes: text("notes"),
+  cancellationReason: text("cancellation_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Booking = typeof bookings.$inferSelect;
+export type NewBooking = typeof bookings.$inferInsert;
+
+// Phase 5: Booking Halls junction table — atomic association between bookings and halls
+export const bookingHalls = pgTable(
+  "booking_halls",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    hallId: uuid("hall_id")
+      .notNull()
+      .references(() => halls.id, { onDelete: "cascade" }),
+    slotClaimId: uuid("slot_claim_id")
+      .notNull()
+      .references(() => slotClaims.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("booking_halls_booking_id_hall_id_unique_idx").on(
+      table.bookingId,
+      table.hallId
+    ),
+  ]
+);
+
+export type BookingHall = typeof bookingHalls.$inferSelect;
+export type NewBookingHall = typeof bookingHalls.$inferInsert;

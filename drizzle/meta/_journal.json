@@ -43,6 +43,13 @@
       "when": 1794475641138,
       "tag": "0005_nasty_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794477312583,
+      "tag": "0006_glorious_shaman",
+      "breakpoints": true
     }
   ]
 }
