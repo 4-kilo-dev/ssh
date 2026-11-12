@@ -15,6 +15,9 @@ import {
   Sparkles,
   Lock,
   UserCheck,
+  Calendar,
+  Clock,
+  Unlock,
 } from "lucide-react";
 
 interface Account {
@@ -66,6 +69,52 @@ export default function ManagerVenuePage() {
   const [hallSetting, setHallSetting] = useState("indoor");
   const [hallNotes, setHallNotes] = useState("");
   const [hallCreating, setHallCreating] = useState(false);
+
+  // Schedule & manual block state (Phase 4)
+  const [selectedHall, setSelectedHall] = useState<Hall | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("2026-12-15");
+  const [timelineSlots, setTimelineSlots] = useState<{
+    hour: number;
+    timeLabel: string;
+    status: "free" | "held";
+    reason?: string | null;
+  }[]>([]);
+  const [activeBlocks, setActiveBlocks] = useState<{
+    id: string;
+    startTime: string;
+    endTime: string;
+    reason: string | null;
+  }[]>([]);
+  const [blockStartHour, setBlockStartHour] = useState("14:00");
+  const [blockEndHour, setBlockEndHour] = useState("18:00");
+  const [blockReason, setBlockReason] = useState("Off-platform wedding reception");
+  const [blockSubmitting, setBlockSubmitting] = useState(false);
+
+  const loadHallSchedule = async (hallId: string, date: string) => {
+    if (!venue) return;
+    try {
+      const [availRes, blocksRes] = await Promise.all([
+        fetch(`/api/venues/${venue.id}/halls/${hallId}/availability?date=${date}`),
+        fetch(`/api/venues/${venue.id}/halls/${hallId}/blocks`),
+      ]);
+      if (availRes.ok) {
+        const data = await availRes.json();
+        setTimelineSlots(data.timeline?.slots || []);
+      }
+      if (blocksRes.ok) {
+        const data = await blocksRes.json();
+        setActiveBlocks(data.blocks || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedHall && venue) {
+      loadHallSchedule(selectedHall.id, scheduleDate);
+    }
+  }, [selectedHall, scheduleDate]);
 
   // Load account and venue on mount
   const refreshData = async () => {
@@ -250,15 +299,69 @@ export default function ManagerVenuePage() {
     }
   };
 
+  const handleCreateBlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venue || !selectedHall) return;
+    setBlockSubmitting(true);
+    setStatusMessage(null);
+    try {
+      const startIso = new Date(`${scheduleDate}T${blockStartHour}:00+03:00`).toISOString();
+      const endIso = new Date(`${scheduleDate}T${blockEndHour}:00+03:00`).toISOString();
+
+      const res = await fetch(`/api/venues/${venue.id}/halls/${selectedHall.id}/blocks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startTime: startIso,
+          endTime: endIso,
+          reason: blockReason,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to block slot");
+      }
+
+      setStatusMessage({
+        type: "success",
+        text: `Slot blocked: ${blockStartHour} - ${blockEndHour} on ${scheduleDate} (${blockReason})`,
+      });
+      await loadHallSchedule(selectedHall.id, scheduleDate);
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error creating block" });
+    } finally {
+      setBlockSubmitting(false);
+    }
+  };
+
+  const handleReleaseBlock = async (blockId: string) => {
+    if (!venue || !selectedHall) return;
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/halls/${selectedHall.id}/blocks/${blockId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to release block");
+      }
+      setStatusMessage({ type: "success", text: "Slot block released successfully. Time slot is now free." });
+      await loadHallSchedule(selectedHall.id, scheduleDate);
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error releasing block" });
+    }
+  };
+
   return (
     <div className="page-stack" style={{ maxWidth: "880px", margin: "0 auto" }}>
       <header className="page-heading">
         <p className="eyebrow">
           <Building2 size={14} aria-hidden="true" />
-          <span>Manager Workspace • Phase 3</span>
+          <span>Manager Workspace • Phase 3 & 4</span>
         </p>
         <h1>Venue & Hall Management</h1>
-        <p>Manage your venue profile, define bookable halls, and verify ownership authorization boundaries.</p>
+        <p>Manage your venue profile, define bookable halls, and verify the double-booking exclusion constraint.</p>
       </header>
 
       {/* Quick Session Switcher Strip */}
@@ -576,17 +679,183 @@ export default function ManagerVenuePage() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteHall(hall.id, hall.name)}
-                      className="btn btn-secondary"
-                      style={{ color: "#a32a2a", borderColor: "#f0c2c2", padding: "6px 10px", fontSize: "12px" }}
-                    >
-                      <Trash2 size={13} aria-hidden="true" />
-                      Delete
-                    </button>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedHall(selectedHall?.id === hall.id ? null : hall)}
+                        className={`btn ${selectedHall?.id === hall.id ? "btn-primary" : "btn-secondary"}`}
+                        style={{ padding: "6px 12px", fontSize: "12px" }}
+                      >
+                        <Calendar size={13} aria-hidden="true" />
+                        {selectedHall?.id === hall.id ? "Close Schedule" : "Schedule & Blocks"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHall(hall.id, hall.name)}
+                        className="btn btn-secondary"
+                        style={{ color: "#a32a2a", borderColor: "#f0c2c2", padding: "6px 10px", fontSize: "12px" }}
+                      >
+                        <Trash2 size={13} aria-hidden="true" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Schedule & Slot Blocks Section (Phase 4) */}
+            {selectedHall && (
+              <div
+                style={{
+                  padding: "20px",
+                  background: "var(--paper)",
+                  borderRadius: "10px",
+                  border: "2px solid var(--teal)",
+                  marginBottom: "24px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Clock size={18} style={{ color: "var(--teal)" }} />
+                      Schedule & Blocks for {selectedHall.name}
+                    </h4>
+                    <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--muted)" }}>
+                      Phase 4 derived availability and Postgres exclusion constraint verification.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <label htmlFor="sched-date" style={{ fontSize: "12px", fontWeight: 600 }}>Date:</label>
+                    <input
+                      id="sched-date"
+                      type="date"
+                      className="field"
+                      style={{ padding: "4px 8px", fontSize: "13px" }}
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Hourly Timeline */}
+                <div style={{ marginBottom: "18px" }}>
+                  <label className="label" style={{ marginBottom: "8px" }}>Hourly Derived Availability</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "8px" }}>
+                    {timelineSlots.map((slot) => (
+                      <div
+                        key={slot.hour}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          border: "1px solid",
+                          borderColor: slot.status === "held" ? "#f0c2c2" : "#cce3d8",
+                          background: slot.status === "held" ? "#fff5f5" : "#f0f8f4",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: "var(--ink)" }}>{slot.timeLabel}</div>
+                        <div style={{ marginTop: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              background: slot.status === "held" ? "#c53030" : "var(--teal)",
+                            }}
+                          />
+                          <span style={{ fontWeight: 600, color: slot.status === "held" ? "#c53030" : "var(--teal)" }}>
+                            {slot.status === "held" ? "HELD" : "FREE"}
+                          </span>
+                        </div>
+                        {slot.reason && (
+                          <div style={{ fontSize: "10px", color: "var(--muted)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {slot.reason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Active SlotBlocks list with release button */}
+                {activeBlocks.length > 0 && (
+                  <div style={{ marginBottom: "18px" }}>
+                    <label className="label" style={{ marginBottom: "6px" }}>Active Blocks on this Hall</label>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      {activeBlocks.map((b) => (
+                        <div
+                          key={b.id}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "8px 12px",
+                            background: "var(--surface)",
+                            borderRadius: "6px",
+                            border: "1px solid var(--line)",
+                            fontSize: "12px",
+                          }}
+                        >
+                          <div>
+                            <strong>{new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - {new Date(b.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>
+                            <span style={{ color: "var(--muted)", marginLeft: "8px" }}>{b.reason}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleReleaseBlock(b.id)}
+                            className="btn btn-secondary"
+                            style={{ padding: "4px 8px", fontSize: "11px" }}
+                          >
+                            <Unlock size={12} aria-hidden="true" /> Release Slot
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Place Manual Block Form */}
+                <form onSubmit={handleCreateBlock} style={{ background: "var(--surface)", padding: "14px", borderRadius: "8px", border: "1px solid var(--line)" }}>
+                  <h5 style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: 700 }}>
+                    Lock Slot / Place Off-Platform Block (Tests Double-Booking Invariant)
+                  </h5>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: "10px", alignItems: "flex-end" }}>
+                    <div>
+                      <label className="label" htmlFor="block-start" style={{ fontSize: "11px" }}>Start Hour</label>
+                      <select id="block-start" className="field" value={blockStartHour} onChange={(e) => setBlockStartHour(e.target.value)}>
+                        {Array.from({ length: 14 }, (_, i) => i + 8).map((h) => {
+                          const val = `${String(h).padStart(2, "0")}:00`;
+                          return <option key={val} value={val}>{val}</option>;
+                        })}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="block-end" style={{ fontSize: "11px" }}>End Hour</label>
+                      <select id="block-end" className="field" value={blockEndHour} onChange={(e) => setBlockEndHour(e.target.value)}>
+                        {Array.from({ length: 14 }, (_, i) => i + 9).map((h) => {
+                          const val = `${String(h).padStart(2, "0")}:00`;
+                          return <option key={val} value={val}>{val}</option>;
+                        })}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="block-reason" style={{ fontSize: "11px" }}>Reason</label>
+                      <input
+                        id="block-reason"
+                        className="field"
+                        value={blockReason}
+                        onChange={(e) => setBlockReason(e.target.value)}
+                        placeholder="e.g. Phone booking, private event"
+                      />
+                    </div>
+                    <button type="submit" className="btn btn-primary" disabled={blockSubmitting} style={{ padding: "8px 14px", fontSize: "12px" }}>
+                      {blockSubmitting ? "Locking..." : "Lock Slot"}
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 

@@ -141,3 +141,41 @@ export const halls = pgTable(
 
 export type Hall = typeof halls.$inferSelect;
 export type NewHall = typeof halls.$inferInsert;
+
+// Phase 4: Slot Claim Enums
+export const slotClaimTypeEnum = pgEnum("slot_claim_type", [
+  "block",
+  "booking",
+]);
+
+export type SlotClaimType = (typeof slotClaimTypeEnum.enumValues)[number];
+
+export const slotClaimStatusEnum = pgEnum("slot_claim_status", [
+  "active",
+  "released",
+]);
+
+export type SlotClaimStatus = (typeof slotClaimStatusEnum.enumValues)[number];
+
+// Phase 4: Slot claims table — holds time claims for halls (manual blocks and booking claims)
+// Protected by Postgres GIST exclusion constraint: no two active claims on the same hall may overlap
+export const slotClaims = pgTable("slot_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  hallId: uuid("hall_id")
+    .notNull()
+    .references(() => halls.id, { onDelete: "cascade" }),
+  startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+  endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+  claimType: slotClaimTypeEnum("claim_type").notNull(),
+  status: slotClaimStatusEnum("status").notNull().default("active"),
+  reason: text("reason"),
+  createdById: uuid("created_by_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  referenceId: uuid("reference_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SlotClaim = typeof slotClaims.$inferSelect;
+export type NewSlotClaim = typeof slotClaims.$inferInsert;

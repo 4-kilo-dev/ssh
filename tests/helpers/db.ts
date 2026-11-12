@@ -34,6 +34,7 @@ export async function setupTestDatabase(): Promise<TestDbInstance> {
     DROP SCHEMA IF EXISTS public CASCADE;
     CREATE SCHEMA public;
     DROP SCHEMA IF EXISTS drizzle CASCADE;
+    CREATE EXTENSION IF NOT EXISTS btree_gist;
   `);
 
   const db = drizzle(pool, { schema });
