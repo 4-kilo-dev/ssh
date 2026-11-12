@@ -1,0 +1,36 @@
+# Local development + test database for the Addis venue marketplace backend.
+# This is a throwaway LOCAL database only. Do not use these credentials in production.
+#
+# Usage:
+#   docker compose up -d        # start Postgres
+#   docker compose down         # stop (data kept in the named volume)
+#   docker compose down -v      # stop and wipe all data
+#
+# Two logical databases live in this one server:
+#   addisvenue      - the dev database the app uses (pnpm dev)
+#   addisvenue_test - the database the Vitest harness recreates on every run
+# The test database is created by ./docker/initdb/01-create-test-db.sql at first boot.
+
+services:
+  addisvenue-db:
+    image: postgres:16-alpine
+    container_name: addisvenue-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: addisvenue
+      POSTGRES_PASSWORD: addisvenue
+      POSTGRES_DB: addisvenue
+    ports:
+      # Host 5434 -> container 5432, so it will not clash with a system Postgres on 5432/5433.
+      - "5434:5432"
+    volumes:
+      - addisvenue-db-data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U addisvenue -d addisvenue"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  addisvenue-db-data:
