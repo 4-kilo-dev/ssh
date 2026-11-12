@@ -55,3 +55,34 @@ export const credentials = pgTable("credentials", {
 
 export type Credential = typeof credentials.$inferSelect;
 export type NewCredential = typeof credentials.$inferInsert;
+
+// Phase 2: Onboarding tokens — short-lived, single-use, signed tokens for setting initial password
+export const onboardingTokens = pgTable("onboarding_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type OnboardingToken = typeof onboardingTokens.$inferSelect;
+export type NewOnboardingToken = typeof onboardingTokens.$inferInsert;
+
+// Phase 2: Sessions table — database-backed server sessions with user-agent & last-seen tracking
+export const sessions = pgTable("sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  sessionToken: text("session_token").notNull().unique(),
+  userAgent: text("user_agent"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;

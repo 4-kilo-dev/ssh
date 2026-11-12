@@ -15,6 +15,20 @@
       "when": 1794471674494,
       "tag": "0001_mixed_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794472204015,
+      "tag": "0002_great_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794472336470,
+      "tag": "0003_tidy_skullbuster",
+      "breakpoints": true
     }
   ]
 }
