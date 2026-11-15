@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authenticateSession } from "@/lib/auth/require-auth";
 import { getBookingById } from "@/lib/services/booking-service";
 import { getVenueById } from "@/lib/services/venue-service";
+import { attachBookingDetails } from "@/lib/services/list-details-service";
 
 export async function GET(
   req: Request,
@@ -32,5 +33,8 @@ export async function GET(
     );
   }
 
-  return NextResponse.json(booking);
+  const [detailed] = await attachBookingDetails([booking], {
+    includeCustomer: isManager || isAdmin,
+  });
+  return NextResponse.json(detailed);
 }

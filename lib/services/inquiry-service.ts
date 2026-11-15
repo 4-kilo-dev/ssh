@@ -14,7 +14,7 @@
  *    - Foreign accounts are rejected with 403 / unauthorized error.
  */
 
-import { eq, or, asc, desc } from "drizzle-orm";
+import { eq, or, asc, desc, and, ne, isNull } from "drizzle-orm";
 import { getDb } from "../db/client";
 import {
   inquiryConversations,
@@ -257,4 +257,41 @@ export async function listConversationsForAccount(accountId: string): Promise<In
     .from(inquiryConversations)
     .where(eq(inquiryConversations.customerId, accountId))
     .orderBy(desc(inquiryConversations.updatedAt));
+}
+
+/**
+ * Marks every message the other participant sent in this conversation as read
+ * by `readerId`. Called when a participant opens the conversation, so unread
+ * counts in conversation lists go back to zero. Non-participants are ignored.
+ * Returns the number of messages marked as read.
+ */
+export async function markConversationRead(input: {
+  conversationId: string;
+  readerId: string;
+}): Promise<number> {
+  const db = getDb();
+
+  const [conv] = await db
+    .select()
+    .from(inquiryConversations)
+    .where(eq(inquiryConversations.id, input.conversationId))
+    .limit(1);
+
+  if (!conv || (conv.customerId !== input.readerId && conv.managerId !== input.readerId)) {
+    return 0;
+  }
+
+  const updated = await db
+    .update(inquiryMessages)
+    .set({ readAt: new Date() })
+    .where(
+      and(
+        eq(inquiryMessages.conversationId, input.conversationId),
+        ne(inquiryMessages.senderId, input.readerId),
+        isNull(inquiryMessages.readAt)
+      )
+    )
+    .returning({ id: inquiryMessages.id });
+
+  return updated.length;
 }

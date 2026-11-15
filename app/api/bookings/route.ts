@@ -6,6 +6,7 @@ import {
   listBookingsByVenue,
 } from "@/lib/services/booking-service";
 import { getVenueByManagerId } from "@/lib/services/venue-service";
+import { attachBookingDetails } from "@/lib/services/list-details-service";
 
 export async function POST(req: Request) {
   const auth = await authenticateSession(req);
@@ -67,12 +68,12 @@ export async function GET(req: Request) {
         return NextResponse.json([]);
       }
       const bookings = await listBookingsByVenue(venue.id);
-      return NextResponse.json(bookings);
+      return NextResponse.json(await attachBookingDetails(bookings, { includeCustomer: true }));
     }
 
     // Default: customer list
     const bookings = await listBookingsByCustomer(auth.account.id);
-    return NextResponse.json(bookings);
+    return NextResponse.json(await attachBookingDetails(bookings, { includeCustomer: false }));
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to list bookings" },

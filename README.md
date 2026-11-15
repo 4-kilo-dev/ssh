@@ -1,5 +1,10 @@
 # Addis Ababa Venue Marketplace
 
+> **Mobile app:** a native iOS/Android app for customers and venue managers lives in
+> [`mobile/`](mobile/README.md) (Expo + React Native). It uses this backend's API with a
+> Bearer token (`Authorization: Bearer …`, sent with `x-addisvenue-client: mobile`).
+> The `/api/auth/demo-*` routes are turned off in production unless `ALLOW_DEMO_AUTH=true`.
+
 A responsive Next.js + TypeScript front-end demo for discovering event venues, requesting bookings, and coordinating vendors in Addis Ababa. The UI supports English and Amharic (both left-to-right), formats dates/numbers/ETB through shared helpers, and stores demo records in browser-local state.
 
 ## Run and inspect

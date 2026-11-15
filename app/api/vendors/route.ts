@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateSession } from "@/lib/auth/require-auth";
-import { createVendor, listVendors } from "@/lib/services/vendor-service";
+import { createVendor, listVendors, listVendorsByOwner } from "@/lib/services/vendor-service";
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateSession(req);
@@ -46,6 +46,21 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+
+  // ?mine=true — the signed-in account's own vendor listings
+  if (searchParams.get("mine") === "true") {
+    const auth = await authenticateSession(req);
+    if (!auth.account) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+    try {
+      const vendors = await listVendorsByOwner(auth.account.id);
+      return NextResponse.json({ vendors });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+  }
+
   const category = searchParams.get("category") || undefined;
   const area = searchParams.get("area") || undefined;
   const verified = searchParams.get("verified");

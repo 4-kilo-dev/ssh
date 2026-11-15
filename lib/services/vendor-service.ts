@@ -128,6 +128,18 @@ export async function getVendorById(vendorId: string): Promise<Vendor | null> {
 }
 
 /**
+ * Lists the vendor profiles owned by an account (the vendor's own listings).
+ */
+export async function listVendorsByOwner(ownerId: string): Promise<Vendor[]> {
+  const db = getDb();
+  return await db
+    .select()
+    .from(vendors)
+    .where(eq(vendors.ownerId, ownerId))
+    .orderBy(desc(vendors.createdAt));
+}
+
+/**
  * Lists vendors with deterministic ranking:
  * 1. Boosted vendors rank first (by boostScore desc).
  * 2. Verified vendors rank ahead of unverified vendors.

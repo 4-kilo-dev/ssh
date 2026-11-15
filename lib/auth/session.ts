@@ -145,9 +145,30 @@ export function clearSessionCookie(): string {
 }
 
 /**
- * Extracts the session token from a standard Request Cookie header.
+ * Header a native (mobile) client sends so auth routes also return the session
+ * token in the JSON body. Native apps cannot rely on HTTP-only cookies, so they
+ * store the token securely on the device and send it back as a Bearer token.
+ */
+export const CLIENT_HEADER = "x-addisvenue-client";
+
+/** True when the request comes from the native mobile app. */
+export function isMobileClient(req: Request): boolean {
+  return req.headers.get(CLIENT_HEADER) === "mobile";
+}
+
+/**
+ * Extracts the session token from the request.
+ * Order: `Authorization: Bearer <token>` (mobile app), then the session cookie (web).
  */
 export function getSessionTokenFromRequest(req: Request): string | null {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) {
+    const [scheme, value] = authHeader.trim().split(/\s+/, 2);
+    if (scheme?.toLowerCase() === "bearer" && value) {
+      return value;
+    }
+  }
+
   const cookieHeader = req.headers.get("cookie");
   if (!cookieHeader) return null;
 

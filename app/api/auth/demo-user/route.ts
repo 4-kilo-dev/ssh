@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { demoAuthDisabledResponse } from "@/lib/auth/demo-guard";
 import { getDb } from "@/lib/db/client";
 import { accounts } from "@/lib/db/schema";
 import { createAccount, setPassword } from "@/lib/services/account-service";
@@ -10,6 +11,9 @@ import { eq, or } from "drizzle-orm";
  * Quick customer switcher helper for visual verification in browser.
  */
 export async function POST(req: Request) {
+  const blocked = demoAuthDisabledResponse();
+  if (blocked) return blocked;
+
   try {
     const { userPreset = "A" } = await req.json().catch(() => ({ userPreset: "A" }));
 

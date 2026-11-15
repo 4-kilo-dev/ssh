@@ -4,6 +4,7 @@ import {
   createConversation,
   listConversationsForAccount,
 } from "@/lib/services/inquiry-service";
+import { attachConversationDetails } from "@/lib/services/list-details-service";
 
 export async function POST(req: Request) {
   const auth = await authenticateSession(req);
@@ -47,7 +48,7 @@ export async function GET(req: Request) {
 
   try {
     const convs = await listConversationsForAccount(auth.account.id);
-    return NextResponse.json(convs);
+    return NextResponse.json(await attachConversationDetails(convs, auth.account.id));
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to list inquiries" },
