@@ -2,7 +2,7 @@
   "name": "addisvenue",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@11.25.0",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",

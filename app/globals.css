@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 * { box-sizing:border-box; }
-html { background:var(--paper); scroll-behavior:smooth; }
+html { background:var(--paper); scroll-behavior:smooth; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 body { margin:0; color:var(--ink); background:var(--paper); font-family:Arial,"Noto Sans Ethiopic","Noto Sans",system-ui,sans-serif; font-size:15px; line-height:1.55; }
 button,input,select,textarea { font:inherit; }
 button,a,select { -webkit-tap-highlight-color:transparent; }

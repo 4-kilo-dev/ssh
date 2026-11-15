@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { DemoProvider } from "@/lib/store";
 import { AppShell } from "@/components/AppShell";
@@ -6,6 +6,12 @@ import { AppShell } from "@/components/AppShell";
 export const metadata: Metadata = {
   title: "Addis Gathering | Find your place in Addis Ababa",
   description: "Explore event venues and trusted services across Addis Ababa.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
