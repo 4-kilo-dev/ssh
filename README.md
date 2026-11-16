@@ -11,7 +11,23 @@ pnpm typecheck
 pnpm build
 ```
 
-The app is front-end only: it has no application data API, business backend, or database. It does not send sign-in codes, contact providers, process payments, or save records to a server. Use the persistent demo notice and sample labels as the source of truth; never enter real payment credentials.
+## Deploying the backend on Vercel
+
+The API and authentication routes require a hosted PostgreSQL database. A local
+Docker database is not available to Vercel. In the Vercel project settings, add
+these environment variables for **Production**, **Preview**, and **Development**:
+
+- `DATABASE_URL` — the pooled PostgreSQL connection string from your database
+  provider, including `sslmode=require` when the provider requires TLS.
+- `AUTH_SECRET` — a long random secret used to sign session cookies.
+
+After setting the variables, apply the schema to that database from a trusted
+machine with `pnpm db:migrate` (and run `pnpm db:seed` only if this is a demo
+database), then redeploy. Check `/api/health`; it should return `{ "status":
+"ok", "db": true }`. If it returns `DATABASE_URL is not set`, the variable is
+missing from the environment used by that deployment.
+
+The marketplace screens still include demo-only browser-local flows and simulated payments. The server-backed API and authentication routes are separate and require the Vercel database setup above; the app does not send sign-in codes, contact providers, or process real payments. Never enter real payment credentials.
 
 `pnpm start` runs the production Next.js UI and honors the host-provided `PORT`. The published Node container is used only to serve the front end; database provisioning remains disabled, and all mutable demo state stays in this browser's localStorage.
 

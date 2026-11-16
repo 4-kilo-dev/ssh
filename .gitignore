@@ -4,6 +4,7 @@ out/
 .DS_Store
 *.log
 .env*
+!.env.example
 *.tsbuildinfo
 
 # Internal agent/business docs — never pushed, not even to a private repo
