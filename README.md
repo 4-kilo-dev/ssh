@@ -22,6 +22,20 @@ these environment variables for **Production**, **Preview**, and **Development**
 - `AUTH_SECRET` — a long random secret used to sign session cookies.
 - `TELEGRAM_BOT_TOKEN` — the token for the bot that opens the Mini App. The
   Telegram API uses it to verify the signed Mini App identity payload.
+- `TELEGRAM_WEBAPP_URL` — the public HTTPS Mini App URL, ending in `/tg`.
+- `TELEGRAM_WEBHOOK_SECRET` — a random secret used to protect the webhook.
+
+To connect `/start`, register the webhook after deployment:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://your-domain.example/api/telegram/webhook","secret_token":"'$TELEGRAM_WEBHOOK_SECRET'"}'
+```
+
+The bot replies to `/start` with a button that launches `/tg`, and configures
+the chat menu button to open the same Mini App. Telegram requires the Mini App
+URL to use HTTPS and the user must tap the button to launch it.
 
 After setting the variables, apply the schema to that database from a trusted
 machine with `pnpm db:migrate` (and run `pnpm db:seed` only if this is a demo
