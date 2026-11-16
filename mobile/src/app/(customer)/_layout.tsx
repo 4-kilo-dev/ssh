@@ -35,7 +35,7 @@ export default function CustomerTabs() {
       />
       <Tabs.Screen
         name="vendors"
-        options={{ title: t("tabVendors"), tabBarIcon: tabIcon("sparkles-outline", "sparkles") }}
+        options={{ title: t("tabVendors"), tabBarIcon: tabIcon("bag-handle-outline", "bag-handle") }}
       />
       <Tabs.Screen
         name="bookings"
