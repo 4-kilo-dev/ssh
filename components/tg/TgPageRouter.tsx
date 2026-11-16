@@ -4,7 +4,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Link } from "@/lib/nav";
 import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
-import { DemoControls } from "@/components/DemoControls";
 import { BookingRequestForm, BookingSubmitted, MyEventDashboard, PaymentScreen, VenueDetails } from "@/components/CoreFlow";
 import { CustomerInquiries, CustomerInquiryDetail, InquiryRequest, InquirySent, VendorProfile } from "@/components/VendorFlow";
 import { ContactPage, CustomerBookingDetail, CustomerBookings, CustomerNotifications, CustomerPayments, CustomerProfileSetup, CustomerSavedVendors, CustomerSettings, CustomerSignIn, StaticCustomerPage } from "@/components/CustomerExtras";
@@ -19,9 +18,7 @@ import { TgStickyAction } from "@/components/tg/TgStickyAction";
 /**
  * Router for the Telegram Mini App.
  *
- * Customer screens only. The demo role gate that PageRouter applies on the web
- * is deliberately not applied here: the Mini App is always the customer view,
- * so /tg never shows "Access denied" because /demo was left on another role.
+ * Customer screens only. The Mini App is always the customer view.
  * Vendor and admin paths have no entry and fall through to not-found, which
  * keeps them unreachable from the Mini App.
  */
@@ -70,9 +67,6 @@ export function TgPageRouter() {
   if (logical === "/saved") return <CustomerSavedVendors />;
   if (logical === "/notifications") return <CustomerNotifications />;
   if (logical === "/profile" || logical === "/settings") return <CustomerSettings />;
-
-  // Payment outcome selector and demo reset — the sales team needs this in /tg.
-  if (logical === "/demo") return <DemoControls />;
 
   if (["/about", "/faq", "/terms", "/privacy"].includes(logical)) {
     return <StaticCustomerPage page={logical.slice(1) as "about" | "faq" | "terms" | "privacy"} />;

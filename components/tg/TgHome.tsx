@@ -103,6 +103,5 @@ export function TgHome() {
       </div>
     </section>
 
-    <p className="small-note">{t("noBackend", locale)}</p>
   </div>;
 }

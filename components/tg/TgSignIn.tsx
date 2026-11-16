@@ -2,19 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
-import { CustomerSignIn } from "@/components/CustomerExtras";
 import { useRouter } from "@/lib/nav";
 import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
-import { getTelegramDisplayName, getTelegramUser, isTelegramMiniApp } from "@/lib/telegram";
+import { getTelegramDisplayName, getTelegramInitData, getTelegramUser, isTelegramMiniApp } from "@/lib/telegram";
 
 /**
  * Mini App sign-in.
  *
  * Inside Telegram we offer one-tap sign-in using the Telegram account name,
- * which becomes the demo booking account (the screen says so explicitly).
- * Everywhere else — and as a fallback — the shared phone/OTP demo sign-in from
- * CustomerExtras is rendered unchanged, so /tg works in a plain browser.
+ * which is verified server-side and linked to the database account.
  */
 export function TgSignIn() {
   const demo = useDemo();
@@ -29,14 +26,15 @@ export function TgSignIn() {
     setTelegramName(getTelegramDisplayName());
   }, []);
 
-  const customer = demo.customers.find((item) => item.id === "customer-1") || demo.customers[0];
   const telegramUser = getTelegramUser();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   function continueWithTelegram() {
-    if (!telegramName) return;
-    if (customer) demo.saveCustomer({ ...customer, name: telegramName });
-    demo.setRole("customer");
-    router.push("/");
+    const initData = getTelegramInitData();
+    if (!initData) return;
+    setLoading(true); setError(null);
+    fetch("/api/auth/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData }) }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Authentication failed"); return data; }).then(() => router.push("/")).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Authentication failed")).finally(() => setLoading(false));
   }
 
   return <div className="page-stack narrow-form">
@@ -50,12 +48,12 @@ export function TgSignIn() {
             </div>
             <span className="avatar-dot" aria-hidden="true">{telegramName.charAt(0)}</span>
           </div>
-          <p className="small-note">{t("tgTelegramHelp", locale)}</p>
-          <button type="button" className="btn btn-primary full-width" onClick={continueWithTelegram}>
-            <ShieldCheck size={17} aria-hidden="true" />{t("tgTelegramTitle", locale)}
+          <p className="small-note">Continue securely with your Telegram account.</p>
+          {error && <p className="field-error-text" role="alert">{error}</p>}
+          <button type="button" className="btn btn-primary full-width" onClick={continueWithTelegram} disabled={loading}>
+            <ShieldCheck size={17} aria-hidden="true" />{loading ? "Connecting…" : "Continue with Telegram"}
           </button>
         </section>
-      : <p className="inline-notice">{t("tgNoTelegram", locale)}</p>}
-    <CustomerSignIn />
+      : <p className="inline-notice">Open this page from the Telegram bot to continue.</p>}
   </div>;
 }

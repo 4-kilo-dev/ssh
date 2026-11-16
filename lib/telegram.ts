@@ -68,6 +68,12 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null;
 }
 
+/** The signed payload that the server verifies to authenticate this user. */
+export function getTelegramInitData(): string | null {
+  if (!isTelegramMiniApp()) return null;
+  return getTelegramWebApp()?.initData || null;
+}
+
 /**
  * True only for a genuine Telegram launch. The script also loads in ordinary
  * browsers, where `initData` stays empty — that is the reliable signal.

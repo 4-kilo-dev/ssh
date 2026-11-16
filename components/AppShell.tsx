@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Bell, Languages, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDemo } from "@/lib/store";
@@ -14,20 +14,10 @@ const mainLinks = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { locale, setLocale, role } = useDemo();
   const pathname = usePathname();
-  const router = useRouter();
-  const [activationCount, setActivationCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { document.documentElement.lang = locale; document.documentElement.dir = "ltr"; }, [locale]);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
-
-  function activateFooterLogo() {
-    const next = activationCount + 1;
-    if (next >= 5) {
-      setActivationCount(0);
-      router.push("/demo");
-    } else setActivationCount(next);
-  }
 
   // The Telegram Mini App (/tg) and its desktop preview frame ship their own chrome,
   // so the web shell is skipped for both.
@@ -35,7 +25,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return <div className="shell">
     <a className="skip-link" href="#main-content">{t("skipContent", locale)}</a>
-    <div className="top-notice"><span className="notice-dot" aria-hidden="true" />{t("noBackend", locale)} <span>{t("noCredentials", locale)}</span></div>
     <header className="site-header">
       <div className="container header-inner">
         <Link className="brand-lockup" href="/" aria-label={`${t("brand", locale)} — ${t("home", locale)}`}>
@@ -65,14 +54,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <main id="main-content" className={`container main-content site-wide-refresh ${pathname.startsWith("/admin") ? "admin-area" : pathname.startsWith("/vendor") ? "vendor-area" : ""}`} tabIndex={-1}>{children}</main>
     <footer className="site-footer">
       <div className="container footer-inner">
-        <button type="button" className="footer-brand-button" onClick={activateFooterLogo} aria-label={t("ariaFooterLogo", locale)} aria-describedby="footer-logo-help">
+        <div className="footer-brand-button" aria-describedby="footer-logo-help">
           <span className="brand-mark" aria-hidden="true"><span /><span /></span>
           <span><strong>{t("brand", locale)}</strong><small>{t("footerNote", locale)}</small></span>
-        </button>
-        <p id="footer-logo-help" className="footer-demo-hint">{t("demoInstructions", locale)}</p>
+        </div>
+        <p id="footer-logo-help" className="footer-demo-hint">{t("footerNote", locale)}</p>
         <div className="footer-links"><Link href="/faq">{t("faq", locale)}</Link><Link href="/terms">{t("terms", locale)}</Link><Link href="/privacy">{t("privacy", locale)}</Link><Link href="/contact">{t("contact", locale)}</Link><Link href="/vendor/apply">{t("vendorApplyTitle", locale)}</Link></div>
-        {activationCount > 0 && <p className="activation-count" role="status" aria-live="polite">{t("footerCounter", locale)}: {activationCount}/5</p>}
-        <p className="footer-disclaimer">{t("accessNotice", locale)}</p>
       </div>
     </footer>
   </div>;

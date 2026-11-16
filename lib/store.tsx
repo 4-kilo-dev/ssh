@@ -34,6 +34,7 @@ type DemoContextValue = DemoData & {
   saveNotificationPreferences: (preferences: Record<string, boolean>) => void; addAuditRecord: (action: string, details: string) => void;
   isDateHeld: (venueId: string, date: string, exceptId?: string) => boolean;
   conflictsFor: (booking: Booking) => Booking[];
+  hydrateFromServer: (input: { account: { id: string; name: string; telegramId?: string | null }; venues: Array<{ id: string; name: string; area: string; type: string; description?: string | null; amenities?: string[] | null; photos?: string[] | null }>; bookings: Array<{ id: string; venueId: string; status: string; startTime: string; guestCount: number; notes?: string | null; createdAt: string }> }) => void;
 };
 
 const defaults: DemoData = {
@@ -124,6 +125,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     addAuditRecord: (action, details) => setData((s) => ({ ...s, auditLog: [{ id: `AUD-${Date.now()}`, at: new Date().toISOString(), actor: s.staffRole, action, details }, ...s.auditLog] })),
     isDateHeld: (venueId, date, exceptId) => data.bookings.some((booking) => booking.id !== exceptId && booking.venueId === venueId && booking.eventDate === date && (booking.status === "Reserved" || booking.status === "Confirmed")),
     conflictsFor: (booking) => data.bookings.filter((item) => item.id !== booking.id && item.venueId === booking.venueId && item.eventDate === booking.eventDate && item.status === "Requested" && data.bookings.some((held) => held.venueId === item.venueId && held.eventDate === item.eventDate && (held.status === "Reserved" || held.status === "Confirmed"))),
+    hydrateFromServer: ({ account, venues, bookings }) => setData((s) => ({ ...s, role: "customer", customers: [{ ...s.customers[0], id: account.id, name: account.name, phone: s.customers[0]?.phone || "" }, ...s.customers.filter((item) => item.id !== account.id && item.id !== "customer-1")], venues: venues.map((venue) => ({ id: venue.id, name: venue.name, area: venue.area, type: venue.type, capacity: 0, price: 0, description: venue.description || "", amenities: venue.amenities || [], packages: [], rating: 0, imageLabel: venue.name, photos: venue.photos || [] })), bookings: bookings.map((booking) => ({ id: booking.id, venueId: booking.venueId, customer: account.name, eventDate: booking.startTime.slice(0, 10), guests: booking.guestCount, packageName: "Venue booking", total: 0, deposit: 0, status: booking.status === "confirmed" ? "Confirmed" : booking.status === "cancelled" ? "Canceled" : "Requested", createdAt: booking.createdAt.slice(0, 10), source: "Platform", notes: booking.notes || undefined })) })),
   }), [data]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

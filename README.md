@@ -20,6 +20,8 @@ these environment variables for **Production**, **Preview**, and **Development**
 - `DATABASE_URL` — the pooled PostgreSQL connection string from your database
   provider, including `sslmode=require` when the provider requires TLS.
 - `AUTH_SECRET` — a long random secret used to sign session cookies.
+- `TELEGRAM_BOT_TOKEN` — the token for the bot that opens the Mini App. The
+  Telegram API uses it to verify the signed Mini App identity payload.
 
 After setting the variables, apply the schema to that database from a trusted
 machine with `pnpm db:migrate` (and run `pnpm db:seed` only if this is a demo

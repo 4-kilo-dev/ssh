@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, SlidersHorizontal } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Link, useRouter } from "@/lib/nav";
 import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
-import { initTelegram, setTelegramBackButton } from "@/lib/telegram";
+import { initTelegram, isTelegramMiniApp, setTelegramBackButton } from "@/lib/telegram";
 import { TgBottomNav } from "@/components/tg/TgBottomNav";
 
 const rootTabs = ["/", "/venues", "/vendors", "/my-event", "/profile"];
@@ -17,7 +17,7 @@ const rootTabs = ["/", "/venues", "/vendors", "/my-event", "/profile"];
  * absent — AppShell skips them for /tg.
  */
 export function TgShell({ children }: { children: React.ReactNode }) {
-  const { locale, setLocale } = useDemo();
+  const { locale, setLocale, hydrateFromServer } = useDemo();
   const router = useRouter();
   const pathname = usePathname();
   const brand = t("brand", locale);
@@ -26,6 +26,18 @@ export function TgShell({ children }: { children: React.ReactNode }) {
 
   // Boot telegram-web-app.js (no-op in a normal browser).
   useEffect(() => { initTelegram(); }, []);
+  useEffect(() => {
+    if (!isTelegramMiniApp()) return;
+    fetch("/api/auth/me").then((response) => response.ok ? response.json() : null).then((account) => {
+      if (!account?.account || account.status !== "authenticated") return;
+      return Promise.all([
+        fetch("/api/venues").then((response) => response.ok ? response.json() : { venues: [] }),
+        fetch("/api/bookings").then((response) => response.ok ? response.json() : []),
+      ]).then(([venueData, bookings]) => hydrateFromServer({ account: account.account, venues: venueData.venues || [], bookings: Array.isArray(bookings) ? bookings : [] }));
+    }).catch(() => {});
+  // This runs once when the Telegram shell mounts; hydrateFromServer only uses setState.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { document.documentElement.lang = locale; document.documentElement.dir = "ltr"; }, [locale]);
 
   // Telegram's native Back button, hidden on the four root tabs.
@@ -55,9 +67,6 @@ export function TgShell({ children }: { children: React.ReactNode }) {
         <div className="tg-topbar-actions">
           <Link className="tg-icon-btn" href="/notifications" aria-label={t("notifications", locale)}>
             <Bell size={20} aria-hidden="true" />
-          </Link>
-          <Link className="tg-icon-btn" href="/demo" aria-label={t("demoMenu", locale)}>
-            <SlidersHorizontal size={20} aria-hidden="true" />
           </Link>
           <select
             className="tg-locale"
