@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { demoAuthDisabledResponse } from "@/lib/auth/demo-guard";
 import { getDb } from "@/lib/db/client";
 import { accounts, vendors } from "@/lib/db/schema";
 import { createAccount, setPassword } from "@/lib/services/account-service";
@@ -11,6 +12,9 @@ import { eq, or } from "drizzle-orm";
  * 1-click test vendor authentication helper for visual verification in browser.
  */
 export async function POST() {
+  const blocked = demoAuthDisabledResponse();
+  if (blocked) return blocked;
+
   try {
     const telegramId = "tg_vendor_demo";
     const phone = "+251911440001";

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { consumeOnboardingToken } from "@/lib/auth/tokens";
 import { setPassword, getAccountById } from "@/lib/services/account-service";
-import { createSession, serializeSessionCookie } from "@/lib/auth/session";
+import { createSession, serializeSessionCookie, isMobileClient } from "@/lib/auth/session";
 
 /**
  * POST /api/auth/onboard/set-password
@@ -54,6 +54,10 @@ export async function POST(req: Request) {
           role: account.role,
           telegramId: account.telegramId,
         },
+        // Mobile app only: it stores this token and sends it as a Bearer token.
+        ...(isMobileClient(req)
+          ? { sessionToken: session.sessionToken, expiresAt: session.expiresAt }
+          : {}),
       },
       {
         status: 200,

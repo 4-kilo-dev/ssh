@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { authenticateManager } from "@/lib/auth/require-manager";
 import { createVenue, listVenues } from "@/lib/services/venue-service";
+import { attachVenueStats } from "@/lib/services/list-details-service";
 
 /**
  * GET /api/venues
  * Public directory listing with optional query filters (area, type, search query).
+ * Each venue also carries hallCount and maxCapacity (largest hall).
+ * Optional ?guests=N keeps only venues with a hall that fits N guests.
  */
 export async function GET(req: Request) {
   try {
@@ -12,8 +15,11 @@ export async function GET(req: Request) {
     const area = searchParams.get("area") ?? undefined;
     const type = searchParams.get("type") ?? undefined;
     const query = searchParams.get("query") ?? undefined;
+    const guests = Number(searchParams.get("guests") ?? 0);
 
-    const venues = await listVenues({ area, type, query });
+    const list = await attachVenueStats(await listVenues({ area, type, query }));
+    const venues =
+      Number.isFinite(guests) && guests > 0 ? list.filter((v) => v.maxCapacity >= guests) : list;
     return NextResponse.json({ status: "ok", venues });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to list venues";

@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "AddisVenue",
+    "slug": "addisvenue",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "addisvenue",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.addisvenue.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.addisvenue.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0d5d56",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0d5d56",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120
+        }
+      ]
+    ]
+  }
+}

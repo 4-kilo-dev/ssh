@@ -3,7 +3,9 @@ import { authenticateSession } from "@/lib/auth/require-auth";
 import {
   getConversationById,
   getConversationMessages,
+  markConversationRead,
 } from "@/lib/services/inquiry-service";
+import { attachConversationDetails } from "@/lib/services/list-details-service";
 
 export async function GET(
   req: Request,
@@ -39,8 +41,13 @@ export async function GET(
       callerId: auth.account.id,
     });
 
+    // Opening the thread marks the other side's messages as read.
+    await markConversationRead({ conversationId: id, readerId: auth.account.id });
+
+    const [detailed] = await attachConversationDetails([conversation], auth.account.id);
+
     return NextResponse.json({
-      conversation,
+      conversation: detailed,
       messages,
     });
   } catch (err: any) {
