@@ -20,7 +20,11 @@ import {
   Plus,
   ArrowUpDown,
   RotateCcw,
+  ArrowRight,
+  Star,
+  Users,
 } from "lucide-react";
+import { vendorImage } from "@/lib/images";
 
 interface Account {
   id: string;
@@ -401,7 +405,7 @@ export default function VendorsDirectoryPage() {
             Showing {filteredVendors.length} Verified & Ranked Partners
           </div>
           <div style={{ fontSize: "0.8rem", color: "var(--muted, #64748b)", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-            <ArrowUpDown size={14} /> Ordered by: Boost Status $\rightarrow$ Verified $\rightarrow$ Recent
+            <ArrowUpDown size={14} /> Ordered by: Boost Status → Verified → Recent
           </div>
         </div>
 
@@ -414,29 +418,37 @@ export default function VendorsDirectoryPage() {
             No vendors found matching your current filters.
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.25rem" }}>
+          <div className="venue-grid vendor-market-grid">
             {filteredVendors.map((vendor, index) => {
               const isBoosted = vendor.boostStatus === "boosted";
 
               return (
-                <div
+                <article
                   key={vendor.id}
-                  className="card"
+                  className="venue-card vendor-market-card card"
                   style={{
-                    padding: "1.25rem",
                     border: isBoosted ? "2px solid var(--teal)" : "1px solid var(--line)",
-                    borderRadius: "10px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
                     background: isBoosted ? "rgba(13, 148, 136, 0.02)" : "#ffffff",
                     boxShadow: isBoosted ? "0 4px 14px rgba(13, 148, 136, 0.12)" : "none",
-                    position: "relative",
                   }}
                 >
-                  {/* Top Bar: Rank & Status Badges */}
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+                  <div className="venue-image-wrap-rel">
+                    <Link href={`/vendors/${vendor.id}`} className="venue-image-link" aria-label={`View details: ${vendor.name}`}>
+                      <img
+                        className="venue-image"
+                        src={vendorImage(vendor.category)}
+                        alt={`${vendor.category} portfolio sample`}
+                        loading="lazy"
+                        onError={(event) => { event.currentTarget.src = "/images/vendor-generic-1.svg"; }}
+                      />
+                      {vendor.area && <span className="photo-chip"><MapPin size={13} aria-hidden="true" />{vendor.area}</span>}
+                      {isBoosted && <span className="card-toprated"><Sparkles size={12} aria-hidden="true" />Boosted</span>}
+                    </Link>
+                  </div>
+
+                  <div className="venue-card-body">
+                    {/* Ranking and trust signals stay visible in the venue-style card. */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.55rem" }}>
                       <span
                         style={{
                           fontSize: "0.75rem",
@@ -447,24 +459,7 @@ export default function VendorsDirectoryPage() {
                         RANK #{index + 1}
                       </span>
 
-                      <div style={{ display: "flex", gap: "0.35rem" }}>
-                        {isBoosted && (
-                          <span
-                            className="pill"
-                            style={{
-                              background: "rgba(245, 158, 11, 0.15)",
-                              color: "#d97706",
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.25rem",
-                            }}
-                          >
-                            <Sparkles size={11} /> BOOSTED
-                          </span>
-                        )}
-
+                      <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
                         {vendor.verified && (
                           <span
                             className="pill"
@@ -485,66 +480,39 @@ export default function VendorsDirectoryPage() {
                     </div>
 
                     {/* Name & Category */}
-                    <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 0.35rem 0" }}>
-                      {vendor.name}
-                    </h3>
+                    <p className="eyebrow">{vendor.category}</p>
+                    <h2 style={{ margin: "0 0 0.4rem" }}><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2>
 
-                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.65rem" }}>
+                    <div className="venue-card-rating">
+                      <Star size={16} fill="currentColor" aria-hidden="true" />
+                      <strong>{vendor.verified ? "Verified" : "Trusted"}</strong>
+                      <span>· {vendor.area || "Addis Ababa"}</span>
+                    </div>
+
+                    <p className="muted line-clamp-3" style={{ marginBottom: "0.9rem" }}>
+                      {vendor.description || "Trusted service provider for weddings and corporate gatherings."}
+                    </p>
+
+                    <div className="venue-facts">
+                      <span><Users size={15} aria-hidden="true" />Vendor service</span>
+                      {vendor.priceRange && <span>Starting at <strong>{vendor.priceRange}</strong></span>}
+                    </div>
+
+                    <div className="tag-list">
                       <span
-                        className="pill"
+                        className="tag"
                         style={{
-                          background: "#f1f5f9",
-                          color: "#475569",
-                          fontSize: "0.75rem",
-                          fontWeight: 500,
-                          display: "flex",
+                          display: "inline-flex",
                           alignItems: "center",
                           gap: "0.25rem",
                         }}
                       >
                         <Tag size={12} /> {vendor.category}
                       </span>
-
-                      {vendor.area && (
-                        <span
-                          className="pill"
-                          style={{
-                            background: "#f1f5f9",
-                            color: "#475569",
-                            fontSize: "0.75rem",
-                            fontWeight: 500,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.25rem",
-                          }}
-                        >
-                          <MapPin size={12} /> {vendor.area}
-                        </span>
-                      )}
-
-                      {vendor.priceRange && (
-                        <span
-                          className="pill"
-                          style={{
-                            background: "rgba(13, 148, 136, 0.08)",
-                            color: "var(--teal)",
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {vendor.priceRange}
-                        </span>
-                      )}
                     </div>
 
-                    {/* Description */}
-                    <p style={{ fontSize: "0.875rem", color: "#475569", margin: "0 0 1rem 0", lineHeight: 1.5 }}>
-                      {vendor.description || "Trusted service provider for weddings and corporate gatherings."}
-                    </p>
-                  </div>
-
                   {/* Contact Strip */}
-                  <div style={{ borderTop: "1px dashed var(--line)", paddingTop: "0.75rem", marginTop: "0.5rem" }}>
+                  <div style={{ borderTop: "1px dashed var(--line)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--muted, #64748b)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
                         <Phone size={13} />
@@ -558,7 +526,12 @@ export default function VendorsDirectoryPage() {
                       )}
                     </div>
                   </div>
+
+                  <Link className="btn btn-primary full-width venue-card-cta" href={`/vendors/${vendor.id}`}>
+                    View details <ArrowRight size={15} aria-hidden="true" />
+                  </Link>
                 </div>
+                </article>
               );
             })}
           </div>
