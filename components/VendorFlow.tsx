@@ -41,10 +41,10 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
       <span className="card-toprated"><Star size={12} fill="currentColor" aria-hidden="true" />{t("topRated", locale)}</span>
     </Link>
     <button type="button" className="card-save-btn" aria-pressed={isSaved} aria-label={t(isSaved ? "removeSaved" : "saveVendor", locale)} onClick={() => toggleSaved(vendor.id)}><Heart size={17} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" /></button>
-    <div className="vendor-market-copy"><div className="card-title-row"><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2></div>
+    <div className="vendor-market-copy"><div className="card-title-row"><div><p className="eyebrow">{localCategory(vendor.category, locale)}</p><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2></div></div>
       <p className="muted">{vendor.description}</p><div className="vendor-card-facts"><span><Users size={15} aria-hidden="true" />{vendor.area}</span><span>{t("startingAt", locale)} <strong>{formatETB(vendor.startingPrice, locale)}</strong></span></div>
-      <div className="tag-list">{vendor.services.slice(0, 2).map((service) => <span className="tag" key={service}>{service}</span>)}</div>
-      <Link className="text-link" href={`/vendors/${vendor.id}`}>{t("viewDetails", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
+      <div className="tag-list">{((vendor as Vendor & { boostStatus?: string }).boostStatus === "boosted") && <span className="tag">Boosted</span>}{vendor.services.slice(0, 2).map((service) => <span className="tag" key={service}>{service}</span>)}</div>
+      <Link className="btn btn-primary full-width venue-card-cta" href={`/vendors/${vendor.id}`}>{t("viewDetails", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
     </div>
   </article>;
 }
@@ -68,7 +68,11 @@ export function CustomerVendorBrowser() {
   const hasFilter = Boolean(query || category || area || service || minimum || maximum);
   function clearFilters() { setQuery(""); setCategory(""); setArea(""); setService(""); setMinimum(""); setMaximum(""); }
   return <div className="page-stack">
-    <Heading title={t("vendors", locale)} description={t("vendorDirectory", locale)} />
+    <div className="venue-discovery-intro">
+      <div className="breadcrumbs"><Link href="/">{t("home", locale)}</Link><span aria-hidden="true">/</span><span>{t("vendors", locale)}</span></div>
+      <form className="venue-discovery-search" role="search" onSubmit={(event) => event.preventDefault()}><Search size={20} aria-hidden="true" /><label className="sr-only" htmlFor="vendor-discovery-search">{t("search", locale)}</label><input id="vendor-discovery-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("vendorSearchPlaceholder", locale)} /></form>
+      <Heading title={t("vendors", locale)} description={t("vendorDirectory", locale)} />
+    </div>
     <div className="discovery-layout vendor-discovery-layout">
       <aside className="card" aria-label={t("ariaFilters", locale)}>
         <h2 className="v2-filters-title"><SlidersHorizontal size={18} aria-hidden="true" />{t("filters", locale)}</h2>
