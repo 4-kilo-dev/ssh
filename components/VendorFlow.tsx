@@ -34,16 +34,19 @@ function DemoNotice() {
 export function VendorCard({ vendor }: { vendor: Vendor }) {
   const { locale, savedVendors, toggleSaved } = useDemo();
   const isSaved = savedVendors.includes(vendor.id);
-  return <article className="vendor-market-card card">
-    <Link className="vendor-market-photo" href={`/vendors/${vendor.id}`} aria-label={`${t("viewDetails", locale)}: ${vendor.name}`}>
-      <img src={vendorImage(vendor.category)} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" />
-      <span className="photo-chip">{localCategory(vendor.category, locale)}</span>
-      <span className="card-toprated"><Star size={12} fill="currentColor" aria-hidden="true" />{t("topRated", locale)}</span>
-    </Link>
-    <button type="button" className="card-save-btn" aria-pressed={isSaved} aria-label={t(isSaved ? "removeSaved" : "saveVendor", locale)} onClick={() => toggleSaved(vendor.id)}><Heart size={17} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" /></button>
-    <div className="vendor-market-copy"><div className="card-title-row"><div><p className="eyebrow">{localCategory(vendor.category, locale)}</p><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2></div></div>
-      <p className="muted">{vendor.description}</p><div className="vendor-card-facts"><span><Users size={15} aria-hidden="true" />{vendor.area}</span><span>{t("startingAt", locale)} <strong>{formatETB(vendor.startingPrice, locale)}</strong></span></div>
-      <div className="tag-list">{((vendor as Vendor & { boostStatus?: string }).boostStatus === "boosted") && <span className="tag">Boosted</span>}{vendor.services.slice(0, 2).map((service) => <span className="tag" key={service}>{service}</span>)}</div>
+  const boosted = (vendor as Vendor & { boostStatus?: string }).boostStatus === "boosted";
+  return <article className="venue-card vendor-market-card card">
+    <div className="venue-image-wrap-rel">
+      <Link href={`/vendors/${vendor.id}`} className="venue-image-link" aria-label={`${t("viewDetails", locale)}: ${vendor.name}`}>
+        <img className="venue-image" src={vendorImage(vendor.category)} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" />
+        <span className="photo-chip"><Users size={13} aria-hidden="true" />{vendor.area}</span>
+        <span className="card-toprated"><Star size={12} fill="currentColor" aria-hidden="true" />{t("topRated", locale)}</span>
+      </Link>
+      <button type="button" className="card-save-btn" aria-pressed={isSaved} aria-label={t(isSaved ? "removeSaved" : "saveVendor", locale)} onClick={() => toggleSaved(vendor.id)}><Heart size={17} fill={isSaved ? "currentColor" : "none"} aria-hidden="true" /></button>
+    </div>
+    <div className="venue-card-body"><div className="card-title-row"><div><p className="eyebrow">{localCategory(vendor.category, locale)}</p><h2><Link href={`/vendors/${vendor.id}`}>{vendor.name}</Link></h2></div></div>
+      <p className="muted line-clamp-3">{vendor.description}</p><div className="venue-facts"><span><Users size={15} aria-hidden="true" />{vendor.area}</span><span>{t("startingAt", locale)} <strong>{formatETB(vendor.startingPrice, locale)}</strong></span></div>
+      <div className="tag-list">{boosted && <span className="tag">Boosted</span>}{vendor.services.slice(0, 3).map((service) => <span className="tag" key={service}>{service}</span>)}</div>
       <Link className="btn btn-primary full-width venue-card-cta" href={`/vendors/${vendor.id}`}>{t("viewDetails", locale)} <ArrowRight size={15} aria-hidden="true" /></Link>
     </div>
   </article>;
