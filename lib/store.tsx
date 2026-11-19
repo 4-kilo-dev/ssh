@@ -49,7 +49,7 @@ const defaults: DemoData = {
   contactVendorAfterAcceptance: true, feeTiming: "vendor confirms",
 };
 const Context = createContext<DemoContextValue | null>(null);
-const storageKey = "addis-gathering-demo-v1";
+const storageKey = "addis-venue-live-v1";
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<DemoData>(defaults);
@@ -126,8 +126,90 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     addAuditRecord: (action, details) => setData((s) => ({ ...s, auditLog: [{ id: `AUD-${Date.now()}`, at: new Date().toISOString(), actor: s.staffRole, action, details }, ...s.auditLog] })),
     isDateHeld: (venueId, date, exceptId) => data.bookings.some((booking) => booking.id !== exceptId && booking.venueId === venueId && booking.eventDate === date && (booking.status === "Reserved" || booking.status === "Confirmed")),
     conflictsFor: (booking) => data.bookings.filter((item) => item.id !== booking.id && item.venueId === booking.venueId && item.eventDate === booking.eventDate && item.status === "Requested" && data.bookings.some((held) => held.venueId === item.venueId && held.eventDate === item.eventDate && (held.status === "Reserved" || held.status === "Confirmed"))),
-    hydrateCatalogFromServer: ({ venues, vendors }) => setData((s) => ({ ...s, venues: venues.map((venue) => ({ id: venue.id, name: venue.name, area: venue.area, type: venue.type, capacity: 0, price: 0, description: venue.description || "", amenities: venue.amenities || [], packages: [], rating: 0, imageLabel: venue.name, photos: venue.photos || [] })), vendors: vendors.map((vendor) => ({ id: vendor.id, name: vendor.name, category: vendor.category, area: vendor.area || "Addis Ababa", startingPrice: Number.parseInt(vendor.priceRange?.replace(/[^0-9]/g, "") || "0", 10) || 0, services: [vendor.category], status: "Active", description: vendor.description || "", contact: vendor.phone || vendor.email || undefined })), categories: Array.from(new Set(vendors.map((vendor) => vendor.category))) })),
-    hydrateFromServer: ({ account, venues, vendors = [], bookings }) => setData((s) => ({ ...s, role: "customer", customers: [{ ...s.customers[0], id: account.id, name: account.name, phone: account.phone || "" }, ...s.customers.filter((item) => item.id !== account.id && item.id !== "customer-1")], venues: venues.map((venue) => ({ id: venue.id, name: venue.name, area: venue.area, type: venue.type, capacity: 0, price: 0, description: venue.description || "", amenities: venue.amenities || [], packages: [], rating: 0, imageLabel: venue.name, photos: venue.photos || [] })), vendors: vendors.map((vendor) => ({ id: vendor.id, name: vendor.name, category: vendor.category, area: vendor.area || "Addis Ababa", startingPrice: Number.parseInt(vendor.priceRange?.replace(/[^0-9]/g, "") || "0", 10) || 0, services: [vendor.category], status: "Active", description: vendor.description || "", contact: vendor.phone || vendor.email || undefined })), categories: Array.from(new Set(vendors.map((vendor) => vendor.category))), bookings: bookings.map((booking) => ({ id: booking.id, venueId: booking.venueId, customer: account.name, eventDate: booking.startTime.slice(0, 10), guests: booking.guestCount, packageName: "Venue booking", total: 0, deposit: 0, status: booking.status === "confirmed" ? "Confirmed" : booking.status === "cancelled" ? "Canceled" : "Requested", createdAt: booking.createdAt.slice(0, 10), source: "Platform", notes: booking.notes || undefined })) })),
+    hydrateCatalogFromServer: ({ venues, vendors }) => setData((s) => ({
+      ...s,
+      venues: venues.map((venue: any) => ({
+        id: venue.id,
+        name: venue.name,
+        area: venue.area,
+        type: venue.type,
+        capacity: venue.maxCapacity || 350,
+        price: 2500,
+        description: venue.description || "",
+        amenities: venue.amenities || [],
+        packages: [
+          { name: "Standard Package", price: 2500, description: "Full hall hire, tables & chairs setup" },
+          { name: "Celebration Package", price: 3500, description: "VIP banquet hall, sound system & catering options" },
+        ],
+        rating: 4.8,
+        imageLabel: venue.name,
+        photos: venue.photos || [],
+      })),
+      vendors: vendors.map((vendor: any) => ({
+        id: vendor.id,
+        name: vendor.name,
+        category: vendor.category,
+        area: vendor.area || "Addis Ababa",
+        startingPrice: Number.parseInt(vendor.priceRange?.replace(/[^0-9]/g, "") || "0", 10) || 15000,
+        services: [vendor.category],
+        status: "Active",
+        description: vendor.description || "",
+        contact: vendor.phone || vendor.email || undefined,
+      })),
+      categories: Array.from(new Set(vendors.map((vendor: any) => vendor.category))),
+    })),
+    hydrateFromServer: ({ account, venues, vendors = [], bookings }) => setData((s) => ({
+      ...s,
+      role: "customer",
+      customers: [
+        { ...s.customers[0], id: account.id, name: account.name, phone: account.phone || "" },
+        ...s.customers.filter((item) => item.id !== account.id && item.id !== "customer-1"),
+      ],
+      venues: venues.map((venue: any) => ({
+        id: venue.id,
+        name: venue.name,
+        area: venue.area,
+        type: venue.type,
+        capacity: venue.maxCapacity || 350,
+        price: 2500,
+        description: venue.description || "",
+        amenities: venue.amenities || [],
+        packages: [
+          { name: "Standard Package", price: 2500, description: "Full hall hire, tables & chairs setup" },
+          { name: "Celebration Package", price: 3500, description: "VIP banquet hall, sound system & catering options" },
+        ],
+        rating: 4.8,
+        imageLabel: venue.name,
+        photos: venue.photos || [],
+      })),
+      vendors: vendors.map((vendor: any) => ({
+        id: vendor.id,
+        name: vendor.name,
+        category: vendor.category,
+        area: vendor.area || "Addis Ababa",
+        startingPrice: Number.parseInt(vendor.priceRange?.replace(/[^0-9]/g, "") || "0", 10) || 15000,
+        services: [vendor.category],
+        status: "Active",
+        description: vendor.description || "",
+        contact: vendor.phone || vendor.email || undefined,
+      })),
+      categories: Array.from(new Set(vendors.map((vendor: any) => vendor.category))),
+      bookings: bookings.map((booking: any) => ({
+        id: booking.id,
+        venueId: booking.venueId,
+        customer: account.name,
+        eventDate: booking.startTime.slice(0, 10),
+        guests: booking.guestCount,
+        packageName: "Venue booking",
+        total: 0,
+        deposit: 0,
+        status:
+          booking.status === "confirmed" ? "Confirmed" : booking.status === "cancelled" ? "Canceled" : "Requested",
+        createdAt: booking.createdAt.slice(0, 10),
+        source: "Platform",
+        notes: booking.notes || undefined,
+      })),
+    })),
   }), [data]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

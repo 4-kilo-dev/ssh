@@ -21,15 +21,17 @@ export function PageRouter() {
   const customerOnly = ["/my-event", "/my-bookings", "/my-inquiries", "/my-payments", "/saved", "/profile", "/settings", "/payments", "/inquiries", "/bookings"].some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const [authState, setAuthState] = useState<"checking" | "authenticated" | "unauthenticated">("checking");
   useEffect(() => {
+    // Always synchronize live database catalog (venues & vendors) from PostgreSQL
+    Promise.all([fetch("/api/venues"), fetch("/api/vendors?limit=100")])
+      .then(async ([venueResponse, vendorResponse]) => {
+        const venueData = venueResponse.ok ? await venueResponse.json() : { venues: [] };
+        const vendorData = vendorResponse.ok ? await vendorResponse.json() : { vendors: [] };
+        hydrateCatalogFromServer({ venues: venueData.venues || [], vendors: vendorData.vendors || [] });
+      })
+      .catch(() => hydrateCatalogFromServer({ venues: [], vendors: [] }));
+
     if (!customerOnly) {
       setAuthState("authenticated");
-      if (["/", "/venues", "/vendors"].includes(pathname)) {
-        Promise.all([fetch("/api/venues"), fetch("/api/vendors?limit=100")]).then(async ([venueResponse, vendorResponse]) => {
-          const venueData = venueResponse.ok ? await venueResponse.json() : { venues: [] };
-          const vendorData = vendorResponse.ok ? await vendorResponse.json() : { vendors: [] };
-          hydrateCatalogFromServer({ venues: venueData.venues || [], vendors: vendorData.vendors || [] });
-        }).catch(() => hydrateCatalogFromServer({ venues: [], vendors: [] }));
-      }
       return;
     }
     fetch("/api/auth/me").then(async (response) => {

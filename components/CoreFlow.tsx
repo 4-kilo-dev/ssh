@@ -4,7 +4,7 @@ import { Link, useRouter } from "@/lib/nav";
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Grid2X2, Heart, List, MapPin, Search, ShieldAlert, SlidersHorizontal, Star, Users, X } from "lucide-react";
-import { mockVenues, type Venue } from "@/lib/mock-data";
+import type { Venue } from "@/lib/mock-data";
 import { useDemo } from "@/lib/store";
 import { formatDate, formatETB, formatMonthYear, formatNumber } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -102,11 +102,33 @@ export function VenueDetails({ venueId, calendar }: { venueId: string; calendar?
   const { locale, bookings, venues, vendors, customers, contactVenueAfterDeposit } = useDemo();
   const customerName = customers.find((item) => item.id === "customer-1")?.name || "Hana Bekele";
   const router = useRouter();
-  const venue = venues.find((item) => item.id === venueId) || venues[0] || mockVenues[0];
+  const venue = venues.find((item) => item.id === venueId);
   const [selectedDate, setSelectedDate] = useState("");
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+
+  if (!venue) {
+    return (
+      <div className="page-stack">
+        <section className="card not-found" style={{ textAlign: "center", padding: "48px 24px" }}>
+          <h2>Loading Venue Details...</h2>
+          <p className="muted" style={{ marginBottom: "20px" }}>
+            Retrieving real-time venue and hall information from the server.
+          </p>
+          <Link className="btn btn-secondary" href="/venues">
+            Back to Venues
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  const packages =
+    venue.packages && venue.packages.length > 0
+      ? venue.packages
+      : [{ name: "Standard Package", price: venue.price || 2500, description: "Full hall hire, stage, tables & chairs setup" }];
+
   const heldDates = bookings.filter((b) => b.venueId === venue.id && (b.status === "Reserved" || b.status === "Confirmed")).map((b) => b.eventDate);
   const depositPaid = bookings.some((b) => b.venueId === venue.id && b.customer === customerName && (b.status === "Reserved" || b.status === "Confirmed" || b.status === "Completed"));
   const canRevealContact = !contactVenueAfterDeposit || depositPaid;
@@ -120,7 +142,7 @@ export function VenueDetails({ venueId, calendar }: { venueId: string; calendar?
       <div className="page-stack">
         <section className="card"><h2>{t("description", locale)}</h2><p>{venue.description}</p><div className="key-facts"><span><Users size={17} aria-hidden="true" />{formatNumber(venue.capacity, locale)} {t("capacity", locale)}</span><span>★ {venue.rating.toFixed(1)} / 5</span><span>{t("startingAt", locale)} {formatETB(venue.price, locale)}</span></div></section>
         <section className="card"><h2>{t("amenities", locale)}</h2><div className="tag-list">{venue.amenities.map((value) => <span className="tag" key={value}>{amenityLabel(value, locale)}</span>)}</div></section>
-        <section className="card"><h2>{t("packages", locale)}</h2><div className="package-grid">{venue.packages.map((item) => <article className="package-card" key={item.name}><h3>{item.name}</h3><p>{item.description}</p><strong>{formatETB(item.price, locale)}</strong><button className="btn btn-secondary full-width" type="button" onClick={() => { setSelectedDate(""); router.push(`/bookings/new?venue=${venue.id}&package=${encodeURIComponent(item.name)}`); }}>{t("requestBooking", locale)}</button></article>)}</div></section>
+        <section className="card"><h2>{t("packages", locale)}</h2><div className="package-grid">{packages.map((item) => <article className="package-card" key={item.name}><h3>{item.name}</h3><p>{item.description}</p><strong>{formatETB(item.price, locale)}</strong><button className="btn btn-secondary full-width" type="button" onClick={() => { setSelectedDate(""); router.push(`/bookings/new?venue=${venue.id}&package=${encodeURIComponent(item.name)}`); }}>{t("requestBooking", locale)}</button></article>)}</div></section>
         <section className="card"><h2>{t("mapPlaceholder", locale)}</h2><div className="map-placeholder"><MapPin size={24} aria-hidden="true" /><span>{venue.area}, Addis Ababa</span>{venue.mapLink && <a className="text-link" href={venue.mapLink} target="_blank" rel="noreferrer">{t("openMap", locale)}</a>}</div></section>
         <section className="card"><h2>{t("policies", locale)}</h2><p>{venue.policies || t("dateRule", locale)}</p><p>{t("maskedContact", locale)}</p></section><section className="card"><h2>{t("gallery", locale)}</h2>{venue.photos?.length ? <div className="vendor-gallery">{venue.photos.map((photo, index) => <img key={`${photo}-${index}`} src={photo} alt={`${venue.name} gallery ${index + 1}`} loading="lazy" />)}</div> : <p className="muted">{t("sampleGalleryNote", locale)}</p>}{venue.videos?.length ? <ul>{venue.videos.map((video, index) => <li key={`${video}-${index}`}><a href={video} target="_blank" rel="noreferrer">{t("videoLink", locale)} {formatNumber(index + 1, locale)}</a></li>)}</ul> : null}</section><section className="card"><h2>{t("contactInfo", locale)}</h2><p>{canRevealContact ? (venue.contact || t("sampleVenueContact", locale)) : t("contactHiddenVenue", locale)}</p></section>
         <section className="card"><h2>{t("suggestions", locale)}</h2><div className="vendor-suggestions">{vendors.filter((vendor) => vendor.status === "Active").slice(0, 3).map((vendor) => <Link className="suggested-vendor" key={vendor.id} href={`/vendors/${vendor.id}`}><span className="avatar-dot">{vendor.name.charAt(0)}</span><span><strong>{vendor.name}</strong><small>{vendor.category} · {vendor.area}</small></span><ArrowRight size={16} aria-hidden="true" /></Link>)}</div></section>
@@ -135,11 +157,33 @@ export function VenueDetails({ venueId, calendar }: { venueId: string; calendar?
 export function BookingRequestForm() {
   const { locale, venues, customers, createBooking, isDateHeld } = useDemo();
   const router = useRouter(); const params = useSearchParams();
-  const venue = venues.find((v) => v.id === params.get("venue")) || venues[0] || mockVenues[0];
+  const venue = venues.find((v) => v.id === params.get("venue")) || venues[0];
+
+  if (!venue) {
+    return (
+      <div className="page-stack narrow-form">
+        <section className="card not-found" style={{ textAlign: "center", padding: "48px 24px" }}>
+          <h2>Loading Booking Form...</h2>
+          <p className="muted" style={{ marginBottom: "20px" }}>
+            Please select a venue to begin reservation.
+          </p>
+          <Link className="btn btn-primary" href="/venues">
+            Browse Venues
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  const packages =
+    venue.packages && venue.packages.length > 0
+      ? venue.packages
+      : [{ name: "Standard Package", price: venue.price || 2500, description: "Full hall reservation" }];
+
   const [customerName, setCustomerName] = useState(customers.find((item) => item.id === "customer-1")?.name || "Hana Bekele");
   const [eventDate, setEventDate] = useState(params.get("date") || "");
   const [guests, setGuests] = useState("");
-  const [packageName, setPackageName] = useState(params.get("package") || venue.packages[0].name);
+  const [packageName, setPackageName] = useState(params.get("package") || packages[0].name);
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<FormStatus>("idle"); const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -154,8 +198,39 @@ export function BookingRequestForm() {
     setErrors(next);
     if (Object.keys(next).length) { setStatus("error"); setMessage(t("fixFields", locale)); return; }
     setStatus("loading"); setMessage("");
+
+    // Backend sync: create real booking in PostgreSQL database
+    (async () => {
+      try {
+        const vRes = await fetch(`/api/venues/${venue.id}`);
+        let hallId = "";
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          if (vData.halls && vData.halls.length > 0) {
+            hallId = vData.halls[0].id;
+          }
+        }
+        if (hallId) {
+          await fetch("/api/bookings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              venueId: venue.id,
+              hallIds: [hallId],
+              startTime: `${eventDate}T10:00:00+03:00`,
+              endTime: `${eventDate}T14:00:00+03:00`,
+              guestCount,
+              notes: notes.trim() ? `${packageName}: ${notes.trim()}` : packageName,
+            }),
+          });
+        }
+      } catch (err) {
+        console.warn("Backend booking submission:", err);
+      }
+    })();
+
     window.setTimeout(() => {
-      const chosen = venue.packages.find((item) => item.name === packageName) || venue.packages[0];
+      const chosen = packages.find((item) => item.name === packageName) || packages[0];
       const booking = createBooking({ venueId: venue.id, customer: customerName.trim(), eventDate, guests: guestCount, packageName, notes: notes.trim(), total: chosen.price, deposit: Math.round(chosen.price * 0.25) });
       setStatus("success"); setMessage(t("bookingSubmitted", locale));
       window.setTimeout(() => router.push(`/bookings/submitted?booking=${booking.id}`), 350);
@@ -170,14 +245,14 @@ export function BookingRequestForm() {
             <label className="label" htmlFor="booking-customer">{t("fullName", locale)} <span aria-hidden="true">*</span></label><input id="booking-customer" className={`field ${errors.customer ? "field-error" : ""}`} value={customerName} onChange={(e) => { setCustomerName(e.target.value); setErrors((v) => ({ ...v, customer: "" })); }} aria-invalid={Boolean(errors.customer)} aria-describedby={errors.customer ? "customer-error" : undefined} />{errors.customer && <p id="customer-error" className="field-error-text">{errors.customer}</p>}
             <label className="label" htmlFor="booking-date">{t("eventDateLabel", locale)} <span aria-hidden="true">*</span></label><input id="booking-date" className={`field ${errors.date ? "field-error" : ""}`} type="date" min={new Date().toISOString().slice(0, 10)} value={eventDate} onChange={(e) => { setEventDate(e.target.value); setErrors((v) => ({ ...v, date: "" })); }} aria-invalid={Boolean(errors.date)} aria-describedby={errors.date ? "date-error" : "date-help"} />{errors.date && <p id="date-error" className="field-error-text">{errors.date}</p>}<p id="date-help" className="field-help">{t("dateRule", locale)}</p>
             <label className="label" htmlFor="booking-guests">{t("guestLabel", locale)} <span aria-hidden="true">*</span></label><input id="booking-guests" className={`field ${errors.guests ? "field-error" : ""}`} type="number" min="1" max={venue.capacity} value={guests} onChange={(e) => { setGuests(e.target.value); setErrors((v) => ({ ...v, guests: "" })); }} aria-invalid={Boolean(errors.guests)} aria-describedby={errors.guests ? "guests-error" : undefined} />{errors.guests && <p id="guests-error" className="field-error-text">{errors.guests}</p>}
-            <label className="label" htmlFor="booking-package">{t("package", locale)} <span aria-hidden="true">*</span></label><select id="booking-package" className={`field ${errors.package ? "field-error" : ""}`} value={packageName} onChange={(e) => { setPackageName(e.target.value); setErrors((v) => ({ ...v, package: "" })); }} aria-invalid={Boolean(errors.package)}>{venue.packages.map((item) => <option key={item.name} value={item.name}>{item.name} — {formatETB(item.price, locale)}</option>)}</select>{errors.package && <p className="field-error-text">{errors.package}</p>}
+            <label className="label" htmlFor="booking-package">{t("package", locale)} <span aria-hidden="true">*</span></label><select id="booking-package" className={`field ${errors.package ? "field-error" : ""}`} value={packageName} onChange={(e) => { setPackageName(e.target.value); setErrors((v) => ({ ...v, package: "" })); }} aria-invalid={Boolean(errors.package)}>{packages.map((item) => <option key={item.name} value={item.name}>{item.name} — {formatETB(item.price, locale)}</option>)}</select>{errors.package && <p className="field-error-text">{errors.package}</p>}
             <label className="label" htmlFor="booking-notes">{t("notes", locale)}</label><textarea id="booking-notes" className="field textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("notesPlaceholder", locale)} />
           </div>
           <div className="form-actions"><Link className="btn btn-secondary" href={`/venues/${venue.id}`}>{t("cancel", locale)}</Link><button className="btn btn-primary" type="submit" data-tg-primary disabled={status === "loading"}>{status === "loading" ? t("saving", locale) : t("submit", locale)} <ArrowRight size={16} aria-hidden="true" /></button></div>
           <p className="small-note">{t("noBackend", locale)}</p>
         </form>
       </FormState>
-      <aside className="card booking-summary"><h2>{t("bookingSummary", locale)}</h2><img className="summary-image" src={venueImage(venue)} alt={`${venue.area} venue`} /><h3>{venue.name}</h3><p><MapPin size={15} aria-hidden="true" />{venue.area}</p><dl><div><dt>{t("package", locale)}</dt><dd>{packageName}</dd></div><div><dt>{t("date", locale)}</dt><dd>{eventDate ? formatDate(eventDate, locale) : "—"}</dd></div><div><dt>{t("guests", locale)}</dt><dd>{guests || "—"}</dd></div><div><dt>{t("amount", locale)}</dt><dd>{formatETB(venue.packages.find((item) => item.name === packageName)?.price || venue.price, locale)}</dd></div></dl><p className="muted">{t("availabilityHint", locale)}</p></aside>
+      <aside className="card booking-summary"><h2>{t("bookingSummary", locale)}</h2><img className="summary-image" src={venueImage(venue)} alt={`${venue.area} venue`} /><h3>{venue.name}</h3><p><MapPin size={15} aria-hidden="true" />{venue.area}</p><dl><div><dt>{t("package", locale)}</dt><dd>{packageName}</dd></div><div><dt>{t("date", locale)}</dt><dd>{eventDate ? formatDate(eventDate, locale) : "—"}</dd></div><div><dt>{t("guests", locale)}</dt><dd>{guests || "—"}</dd></div><div><dt>{t("amount", locale)}</dt><dd>{formatETB(packages.find((item) => item.name === packageName)?.price || venue.price, locale)}</dd></div></dl><p className="muted">{t("availabilityHint", locale)}</p></aside>
     </div>
   </div>;
 }

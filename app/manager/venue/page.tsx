@@ -342,30 +342,16 @@ export default function ManagerVenuePage() {
     await refreshData(venueId);
   };
 
-  const switchDemoManager = async (preset: "A" | "B" | "C" | "D") => {
+  const handleLogout = async () => {
     setLoading(true);
     setStatusMessage(null);
     try {
-      const res = await fetch("/api/auth/demo-manager", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ managerId: preset }),
-      });
-      if (res.ok) {
-        await refreshData();
-        const names: Record<string, string> = {
-          A: "Manager Abebe (Skylight)",
-          B: "Manager Kebede (Bellevue)",
-          C: "Manager Tigist (Golf Club)",
-          D: "Manager Dawit (Harmony)",
-        };
-        setStatusMessage({
-          type: "success",
-          text: `Switched session to ${names[preset] || preset}`,
-        });
-      }
+      await fetch("/api/auth/logout", { method: "POST" });
+      await refreshData();
+      setStatusMessage({ type: "success", text: "Successfully logged out" });
     } catch (err) {
-      setStatusMessage({ type: "error", text: "Failed to switch manager session" });
+      console.error(err);
+      setStatusMessage({ type: "error", text: "Failed to log out" });
     } finally {
       setLoading(false);
     }
@@ -1054,48 +1040,31 @@ export default function ManagerVenuePage() {
               {account ? `Current: ${account.name} (${account.role})` : "Not Logged In"}
             </div>
             <div style={{ fontSize: "12px", color: "var(--muted)" }}>
-              {account ? `Phone: ${account.phone}` : "Log in as a venue manager to test ownership boundaries"}
+              {account ? `Phone: ${account.phone}` : "Sign in as a venue manager to access dashboard"}
             </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => switchDemoManager("A")}
-            disabled={loading}
-            style={{ fontSize: "11px", padding: "5px 10px" }}
-          >
-            Skylight (Abebe)
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => switchDemoManager("B")}
-            disabled={loading}
-            style={{ fontSize: "11px", padding: "5px 10px" }}
-          >
-            Bellevue (Kebede)
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => switchDemoManager("C")}
-            disabled={loading}
-            style={{ fontSize: "11px", padding: "5px 10px" }}
-          >
-            Golf Club (Tigist)
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => switchDemoManager("D")}
-            disabled={loading}
-            style={{ fontSize: "11px", padding: "5px 10px" }}
-          >
-            Harmony (Dawit)
-          </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {account ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleLogout}
+              disabled={loading}
+              style={{ fontSize: "12px", padding: "6px 12px" }}
+            >
+              Sign Out
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="btn btn-primary"
+              style={{ fontSize: "12px", padding: "6px 12px", textDecoration: "none" }}
+            >
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
 
@@ -1132,15 +1101,11 @@ export default function ManagerVenuePage() {
           <Lock size={32} style={{ margin: "0 auto 12px", color: "var(--muted)" }} />
           <h2 style={{ fontSize: "18px", margin: "0 0 8px" }}>Venue Manager Authentication Required</h2>
           <p style={{ color: "var(--muted)", maxWidth: "440px", margin: "0 auto 20px", fontSize: "14px" }}>
-            To manage venues and halls, sign in with a <strong>venue_manager</strong> account, or use the quick switcher
-            above to instantiate a verified test manager.
+            To manage venues and halls, sign in with a <strong>venue_manager</strong> account.
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
-            <button type="button" onClick={() => switchDemoManager("A")} className="btn btn-primary">
-              Sign In as Demo Manager A
-            </button>
-            <Link href="/login" className="btn btn-secondary">
-              Go to Standard Login
+            <Link href="/login" className="btn btn-primary">
+              Go to Manager Login
             </Link>
           </div>
         </div>
