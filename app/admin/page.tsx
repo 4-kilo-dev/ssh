@@ -131,7 +131,7 @@ export default function SuperAdminPage() {
   const fetchSession = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/session");
+      const res = await fetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         setAccount(data.account || null);
@@ -142,25 +142,6 @@ export default function SuperAdminPage() {
       setAccount(null);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemoAdminLogin = async () => {
-    setStatusMessage(null);
-    try {
-      const res = await fetch("/api/auth/demo-admin", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setAccount(data.admin);
-        setStatusMessage({
-          type: "success",
-          text: `Logged in as Super Admin: ${data.admin.name} (${data.admin.phone})`,
-        });
-      } else {
-        setStatusMessage({ type: "error", text: data.error || "Failed to log in as Super Admin" });
-      }
-    } catch (err: any) {
-      setStatusMessage({ type: "error", text: err.message });
     }
   };
 
@@ -429,13 +410,28 @@ export default function SuperAdminPage() {
           </div>
 
           <div style={{ display: "flex", gap: "0.6rem" }}>
-            <button
-              onClick={handleDemoAdminLogin}
-              className="btn btn-primary"
-              style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
-            >
-              <UserCheck size={16} /> 1-Click Sign in as Super Admin (+251911000000)
-            </button>
+            {account?.role === "super_admin" ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  setAccount(null);
+                  window.location.href = "/login?redirect=/admin";
+                }}
+                className="btn btn-secondary"
+                style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                Sign Out
+              </button>
+            ) : (
+              <Link
+                href="/login?redirect=/admin"
+                className="btn btn-primary"
+                style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                Sign In as Super Admin
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -450,17 +446,47 @@ export default function SuperAdminPage() {
           <p style={{ color: "var(--muted, #64748b)", maxWidth: 500, margin: "0 auto 1.5rem auto", fontSize: "0.9rem" }}>
             System-wide audit logs, support ticket resolution, and platform KPI analytics are restricted strictly to authorized administrators.
           </p>
-          <button onClick={handleDemoAdminLogin} className="btn btn-primary">
-            Authenticate as Super Admin
-          </button>
+          <Link href="/login?redirect=/admin" className="btn btn-primary">
+            Sign In to Admin Portal
+          </Link>
         </div>
       )}
 
       {/* Super Admin Dashboard Content */}
       {account && account.role === "super_admin" && (
         <>
+          {/* Quick-Jump Dashboard Bar */}
+          <div
+            style={{
+              position: "sticky",
+              top: "70px",
+              zIndex: 15,
+              background: "rgba(255, 255, 255, 0.95)",
+              backdropFilter: "blur(12px)",
+              padding: "10px 0",
+              marginBottom: "1.5rem",
+              borderBottom: "1px solid var(--line)",
+              display: "flex",
+              gap: "8px",
+              overflowX: "auto",
+            }}
+          >
+            <a href="#overview" className="btn btn-outline" style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Calendar size={13} /> KPI Overview ({overview?.bookingsCount ?? 0} bookings)
+            </a>
+            <a href="#onboard" className="btn btn-outline" style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <UserPlus size={13} /> Onboard Partner (Workflow A)
+            </a>
+            <a href="#tickets" className="btn btn-outline" style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Ticket size={13} /> Support Tickets ({overview?.ticketsCount ?? 0})
+            </a>
+            <a href="#audit" className="btn btn-outline" style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <FileText size={13} /> Audit Logs ({overview?.auditLogsCount ?? 0})
+            </a>
+          </div>
+
           {/* Section 0: Partner Venue Onboarding (Workflow A) */}
-          <div className="card" style={{ marginBottom: "2rem", border: "1px solid var(--line)", background: "var(--surface)" }}>
+          <div id="onboard" className="card" style={{ marginBottom: "2rem", border: "1px solid var(--line)", background: "var(--surface)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
               <div>
                 <span className="pill" style={{ background: "rgba(13, 148, 136, 0.12)", color: "var(--teal)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
@@ -651,7 +677,7 @@ export default function SuperAdminPage() {
           </div>
 
           {/* Section 1: Overview KPIs */}
-          <div style={{ marginBottom: "2rem" }}>
+          <div id="overview" style={{ marginBottom: "2rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
               <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0 }}>
                 Platform KPI Overview
@@ -744,7 +770,7 @@ export default function SuperAdminPage() {
           </div>
 
           {/* Section 2: Support Ticket Management & Simulator */}
-          <div style={{ marginBottom: "2.5rem" }}>
+          <div id="tickets" style={{ marginBottom: "2.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
               <div>
                 <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0 }}>
@@ -967,7 +993,7 @@ export default function SuperAdminPage() {
           </div>
 
           {/* Section 3: Append-Only Immutable Audit Log Explorer */}
-          <div>
+          <div id="audit">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
               <div>
                 <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0 }}>

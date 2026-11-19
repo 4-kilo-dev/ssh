@@ -94,7 +94,7 @@ export default function VendorsDirectoryPage() {
 
   const fetchSession = async () => {
     try {
-      const res = await fetch("/api/auth/session");
+      const res = await fetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         setAccount(data.account || null);
