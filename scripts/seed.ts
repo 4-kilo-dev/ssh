@@ -114,6 +114,7 @@ async function main() {
     contactEmail: "banquets@skylightaddis.com",
     amenities: ["Valet Parking (500+ cars)", "High-Speed Wi-Fi", "Full Stage & Pro Lighting", "VIP Changing Rooms", "Backup Generators"],
     policies: "Outside catering not permitted. Acoustic curfews at 23:00 for outdoor terraces.",
+    photos: ["/images/landing.jpg"],
   });
 
   const hallSkylight1 = await createHall(mgrAbebe.id, {
@@ -161,6 +162,7 @@ async function main() {
     contactEmail: "events@bellevueaddis.com",
     amenities: ["Parking for 60 cars", "Dedicated Catering Staff", "Sound System", "Elevator Access"],
     policies: "Flammable items and outside draft tella prohibited. No outside catering.",
+    photos: ["/images/bellevue.jpg"],
   });
 
   const hallBellevue1 = await createHall(mgrKebede.id, {
@@ -200,6 +202,7 @@ async function main() {
     contactEmail: "events@torhailochgolf.com",
     amenities: ["200+ Car Parking", "Outside Catering Permitted", "Open Fairway Lawns", "Tent & Gazebo Rentals"],
     policies: "Outside catering permitted with a 400 ETB per plate kitchen surcharge.",
+    photos: ["/images/Golf.jpg"],
   });
 
   const hallGolf1 = await createHall(mgrTigist.id, {
@@ -239,6 +242,7 @@ async function main() {
     contactEmail: "banquet@harmonyaddis.com",
     amenities: ["Underground Parking", "Integrated Translation Booths", "Buffet Stations", "High-Tech AV"],
     policies: "Music permitted until 00:00 midnight.",
+    photos: ["/images/landingtwo.jpg"],
   });
 
   const hallHarmony1 = await createHall(mgrDawitMgr.id, {
@@ -258,6 +262,376 @@ async function main() {
   });
 
   console.log(`✓ Created: ${venueHarmony.name} (2 halls: Abyssinia Ballroom, Sheba Garden)`);
+
+  // Manager 5: Vibes Hotel and Spa (22 to Megenagna)
+  const mgrVibes = await createAccount({
+    name: "Tewodros Kassahun",
+    phone: "+251911999903",
+    role: "venue_manager",
+  });
+  await setPassword(mgrVibes.id, "password123");
+
+  const venueVibes = await createVenue({
+    managerId: mgrVibes.id,
+    name: "Vibes Hotel and Spa",
+    area: "22 to Megenagna",
+    type: "Hotel ballroom",
+    description: "Vibes Hotel and Spa is on the road from 22 to Megenagna, at the turn to the condominium entrance. It accommodates 20–300 guests and hosts birthdays through small-scale concerts.",
+    contactPhone: "+251911999903",
+    contactEmail: "events@vibesaddis.com",
+    amenities: ["Parking for 50 cars", "Three hall options", "Three catering options", "Birthdays and small-scale concerts"],
+    policies: "Flammable items and Tella (traditional Ethiopian beer) are prohibited. Beer and soft drinks are excluded; other beverages may be brought in with a corkage fee.",
+    photos: ["/images/vibeshotel.jpg"],
+  });
+
+  await createHall(mgrVibes.id, {
+    venueId: venueVibes.id,
+    name: "Diamond Ballroom",
+    capacity: 300,
+    setting: "indoor",
+    notes: "Elegant crystal fixtures, full acoustic wall treatment, and sound booth.",
+  });
+  await createHall(mgrVibes.id, {
+    venueId: venueVibes.id,
+    name: "Special Salon",
+    capacity: 120,
+    setting: "indoor",
+    notes: "Intimate hall ideal for bridal showers, birthdays, and private dinners.",
+  });
+  console.log(`✓ Created: ${venueVibes.name} (2 halls, photo: /images/vibeshotel.jpg)`);
+
+  // Manager 6: Kaleb Hotel (Bole / Edna Mall)
+  const mgrKaleb = await createAccount({
+    name: "Almaz Bekele",
+    phone: "+251911999904",
+    role: "venue_manager",
+  });
+  await setPassword(mgrKaleb.id, "password123");
+
+  const venueKaleb = await createVenue({
+    managerId: mgrKaleb.id,
+    name: "Kaleb Hotel",
+    area: "Bole / Edna Mall",
+    type: "Hotel ballroom",
+    description: "Kaleb Hotel is just inside from Edna Mall, next to Harmony Hotel. It provides tables, chairs, a stage, a projector, and a sound system for weddings, bridal showers, engagements, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999904",
+    contactEmail: "banquets@kalebhotel.et",
+    amenities: ["Parking for 30–50 cars", "Tables and chairs", "Stage, projector, and sound system", "Three hall options"],
+    policies: "Outside catering is allowed with a corkage fee. Meetings cost 1,350 ETB for a full day or 1,100 ETB for a half day. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least one month in advance.",
+    photos: ["/images/kaleb.jpg"],
+  });
+
+  await createHall(mgrKaleb.id, {
+    venueId: venueKaleb.id,
+    name: "Grand Edna Hall",
+    capacity: 250,
+    setting: "indoor",
+    notes: "Complete banquet hall with stage, professional projector, and surround sound.",
+  });
+  await createHall(mgrKaleb.id, {
+    venueId: venueKaleb.id,
+    name: "Bole Conference Suite",
+    capacity: 80,
+    setting: "indoor",
+    notes: "Equipped boardroom for presentations, meetings, and intimate gatherings.",
+  });
+  console.log(`✓ Created: ${venueKaleb.name} (2 halls, photo: /images/kaleb.jpg)`);
+
+  // Manager 7: Stay Easy Hotel (Addisu Gebeya)
+  const mgrStayEasy = await createAccount({
+    name: "Mulugeta Assefa",
+    phone: "+251911999905",
+    role: "venue_manager",
+  });
+  await setPassword(mgrStayEasy.id, "password123");
+
+  const venueStayEasy = await createVenue({
+    managerId: mgrStayEasy.id,
+    name: "Stay Easy Hotel",
+    area: "Addisu Gebeya",
+    type: "Hotel ballroom",
+    description: "Stay Easy Hotel is next to the Total Gas Station in Addisu Gebeya. It hosts weddings, concerts, bridal showers, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999905",
+    contactEmail: "info@stayeasyhotel.et",
+    amenities: ["Parking for 300+ cars", "Tables and chairs", "Stage", "Six or more hall options"],
+    policies: "Outside catering is not allowed. In-house catering costs 2,000–2,500 ETB per plate. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least one month in advance.",
+    photos: ["/images/stayeasy.jpg"],
+  });
+
+  await createHall(mgrStayEasy.id, {
+    venueId: venueStayEasy.id,
+    name: "Grand Celebration Hall",
+    capacity: 1000,
+    setting: "indoor",
+    notes: "Massive pillarless celebration hall with dedicated backstage and VIP suite.",
+  });
+  await createHall(mgrStayEasy.id, {
+    venueId: venueStayEasy.id,
+    name: "Terrace Banquet Hall",
+    capacity: 300,
+    setting: "indoor",
+    notes: "Mid-sized hall with private bar setup and exterior terrace access.",
+  });
+  console.log(`✓ Created: ${venueStayEasy.name} (2 halls, photo: /images/stayeasy.jpg)`);
+
+  // Manager 8: Sapphire Addis (Atlas)
+  const mgrSapphire = await createAccount({
+    name: "Hiwot Girma",
+    phone: "+251911999906",
+    role: "venue_manager",
+  });
+  await setPassword(mgrSapphire.id, "password123");
+
+  const venueSapphire = await createVenue({
+    managerId: mgrSapphire.id,
+    name: "Sapphire Addis",
+    area: "Atlas",
+    type: "Hotel ballroom",
+    description: "Sapphire Addis is in front of Tomoca Coffee in Atlas. It hosts weddings, concerts, bridal showers, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999906",
+    contactEmail: "events@sapphireaddis.com",
+    amenities: ["Parking for 40+ cars", "Tables and chairs", "Stage, speakers, and microphone", "Five hall options"],
+    policies: "Outside catering is not allowed. In-house catering costs 2,000–2,500 ETB per plate. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least five months in advance.",
+    photos: ["/images/sap.jpg"],
+  });
+
+  await createHall(mgrSapphire.id, {
+    venueId: venueSapphire.id,
+    name: "Sapphire Crystal Hall",
+    capacity: 400,
+    setting: "indoor",
+    notes: "Luxury ballroom with ornate chandeliers and direct elevator access.",
+  });
+  await createHall(mgrSapphire.id, {
+    venueId: venueSapphire.id,
+    name: "Atlas Executive Lounge",
+    capacity: 120,
+    setting: "indoor",
+    notes: "Cozy private room for receptions, dinners, and small engagements.",
+  });
+  console.log(`✓ Created: ${venueSapphire.name} (2 halls, photo: /images/sap.jpg)`);
+
+  // Manager 9: De Leopol Hotel (Urael)
+  const mgrDeLeopol = await createAccount({
+    name: "Yohannes Mengistu",
+    phone: "+251911999907",
+    role: "venue_manager",
+  });
+  await setPassword(mgrDeLeopol.id, "password123");
+
+  const venueDeLeopol = await createVenue({
+    managerId: mgrDeLeopol.id,
+    name: "De Leopol Hotel",
+    area: "Urael",
+    type: "Hotel ballroom",
+    description: "De Leopol Hotel is in Urael, behind Bambis Supermarket. It hosts weddings, concerts, bridal showers, engagements, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999907",
+    contactEmail: "sales@deleopolhotel.et",
+    amenities: ["Parking for 375 cars", "Four hall options", "Four catering options"],
+    policies: "Outside beverages except beer and soft drinks can be brought in with a corkage fee. Tella and flammable items are prohibited.",
+    photos: ["/images/deo.jpg"],
+  });
+
+  await createHall(mgrDeLeopol.id, {
+    venueId: venueDeLeopol.id,
+    name: "Leopol Grand Ballroom",
+    capacity: 1000,
+    setting: "indoor",
+    notes: "Expansive ballroom with private entrance, stage, and integrated lighting.",
+  });
+  await createHall(mgrDeLeopol.id, {
+    venueId: venueDeLeopol.id,
+    name: "Bambis Garden Salon",
+    capacity: 350,
+    setting: "covered-outdoor",
+    notes: "Covered veranda with garden perimeter, ideal for wedding cocktail hours.",
+  });
+  console.log(`✓ Created: ${venueDeLeopol.name} (2 halls, photo: /images/deo.jpg)`);
+
+  // Manager 10: Golden Tulip Addis Ababa Hotel (Berhane Adere Mall)
+  const mgrGoldenTulip = await createAccount({
+    name: "Solomon Worku",
+    phone: "+251911999908",
+    role: "venue_manager",
+  });
+  await setPassword(mgrGoldenTulip.id, "password123");
+
+  const venueGoldenTulip = await createVenue({
+    managerId: mgrGoldenTulip.id,
+    name: "Golden Tulip Addis Ababa Hotel",
+    area: "Berhane Adere Mall",
+    type: "Hotel ballroom",
+    description: "Golden Tulip Addis Ababa Hotel is 50 meters inside from Berhane Adere Mall. It hosts birthdays and small-scale concerts.",
+    contactPhone: "+251911999908",
+    contactEmail: "banqueting@goldentulipaddis.com",
+    amenities: ["Parking for 70 cars", "Seven hall options", "Three wedding halls and four meeting halls"],
+    policies: "Kitfo and Qurt are allowed for outside catering. All types of beverages can be brought in. Flammable items and outside catering are prohibited.",
+    photos: ["/images/gold.jpg"],
+  });
+
+  await createHall(mgrGoldenTulip.id, {
+    venueId: venueGoldenTulip.id,
+    name: "Tulip Banquet Salon",
+    capacity: 150,
+    setting: "indoor",
+    notes: "Upscale dining and celebration salon with international audio-video support.",
+  });
+  await createHall(mgrGoldenTulip.id, {
+    venueId: venueGoldenTulip.id,
+    name: "Adere Meeting Hall",
+    capacity: 60,
+    setting: "indoor",
+    notes: "Private executive room for corporate meetings and family dinners.",
+  });
+  console.log(`✓ Created: ${venueGoldenTulip.name} (2 halls, photo: /images/gold.jpg)`);
+
+  // Manager 11: Elilly International Hotel (Kazanchis)
+  const mgrElilly = await createAccount({
+    name: "Rahel Berhanu",
+    phone: "+251911999909",
+    role: "venue_manager",
+  });
+  await setPassword(mgrElilly.id, "password123");
+
+  const venueElilly = await createVenue({
+    managerId: mgrElilly.id,
+    name: "Elilly International Hotel",
+    area: "Kazanchis",
+    type: "Hotel ballroom",
+    description: "Elilly International Hotel is in Kazanchis, next to ECA. It hosts weddings, concerts, bridal showers, engagements, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999909",
+    contactEmail: "banquet@elillyhotel.com",
+    amenities: ["Parking for 250 cars", "Thirteen hall options", "Platinum, Gold, and Silver catering"],
+    policies: "Tella and flammable items are prohibited.",
+    photos: ["/images/eli.jpg"],
+  });
+
+  await createHall(mgrElilly.id, {
+    venueId: venueElilly.id,
+    name: "Queen Sheba Ballroom",
+    capacity: 1000,
+    setting: "indoor",
+    notes: "Grand Kazanchis ballroom, high ceilings, VIP dressing rooms, and stage.",
+  });
+  await createHall(mgrElilly.id, {
+    venueId: venueElilly.id,
+    name: "Blue Nile Banquet Hall",
+    capacity: 400,
+    setting: "indoor",
+    notes: "Versatile medium banquet space with dedicated buffet and beverage stations.",
+  });
+  console.log(`✓ Created: ${venueElilly.name} (2 halls, photo: /images/eli.jpg)`);
+
+  // Manager 12: Magnolia Hotel (Atlas)
+  const mgrMagnolia = await createAccount({
+    name: "Henok Fisseha",
+    phone: "+251911999910",
+    role: "venue_manager",
+  });
+  await setPassword(mgrMagnolia.id, "password123");
+
+  const venueMagnolia = await createVenue({
+    managerId: mgrMagnolia.id,
+    name: "Magnolia Hotel",
+    area: "Atlas",
+    type: "Hotel ballroom",
+    description: "Magnolia Hotel is in Atlas, inside from 2000 Habesha and next to Koba Pastry. It hosts birthdays and small-scale concerts.",
+    contactPhone: "+251911999910",
+    contactEmail: "events@magnoliaaddis.et",
+    amenities: ["Parking for 50–80 cars", "Three hall options", "Two catering options"],
+    policies: "Wine, whiskey, liquor, Tej, and cake can be brought in with a corkage fee. Outside catering is prohibited. Tella and flammable items are prohibited.",
+    photos: ["/images/mon.jpg"],
+  });
+
+  await createHall(mgrMagnolia.id, {
+    venueId: venueMagnolia.id,
+    name: "Magnolia Grand Hall",
+    capacity: 500,
+    setting: "indoor",
+    notes: "Modern banquet hall with mood lighting, sound control, and stage.",
+  });
+  await createHall(mgrMagnolia.id, {
+    venueId: venueMagnolia.id,
+    name: "Koba Terrace Pavilion",
+    capacity: 150,
+    setting: "covered-outdoor",
+    notes: "Covered terrace garden pavilion overlooking Atlas area.",
+  });
+  console.log(`✓ Created: ${venueMagnolia.name} (2 halls, photo: /images/mon.jpg)`);
+
+  // Manager 13: Getfam Hotel (22)
+  const mgrGetfam = await createAccount({
+    name: "Kidist Alemu",
+    phone: "+251911999911",
+    role: "venue_manager",
+  });
+  await setPassword(mgrGetfam.id, "password123");
+
+  const venueGetfam = await createVenue({
+    managerId: mgrGetfam.id,
+    name: "Getfam Hotel",
+    area: "22",
+    type: "Hotel ballroom",
+    description: "Getfam Hotel is in 22, next to Getahun Besha. It hosts weddings, concerts, bridal showers, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999911",
+    contactEmail: "banquets@getfamhotel.com",
+    amenities: ["Parking for 500+ cars", "Seven hall options", "Suite room and spa access for weddings over 400 guests"],
+    policies: "Outside beverages except beer can be brought in with a corkage fee. In-house catering costs 2,000–2,500 ETB per plate. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least six months in advance.",
+    photos: ["/images/get.jpg"],
+  });
+
+  await createHall(mgrGetfam.id, {
+    venueId: venueGetfam.id,
+    name: "Getfam Imperial Hall",
+    capacity: 1000,
+    setting: "indoor",
+    notes: "5-star ballroom with VIP suite access, translation booths, and high ceilings.",
+  });
+  await createHall(mgrGetfam.id, {
+    venueId: venueGetfam.id,
+    name: "Besha Grand Salon",
+    capacity: 450,
+    setting: "indoor",
+    notes: "Spacious hall suited for gala dinners, conferences, and engagements.",
+  });
+  console.log(`✓ Created: ${venueGetfam.name} (2 halls, photo: /images/get.jpg)`);
+
+  // Manager 14: Ras Amba Hotel (4 Kilo / Elizabeth Street)
+  const mgrRasAmba = await createAccount({
+    name: "Fikadu Tefera",
+    phone: "+251911999912",
+    role: "venue_manager",
+  });
+  await setPassword(mgrRasAmba.id, "password123");
+
+  const venueRasAmba = await createVenue({
+    managerId: mgrRasAmba.id,
+    name: "Ras Amba Hotel",
+    area: "4 Kilo / Elizabeth Street",
+    type: "Hotel ballroom",
+    description: "Ras Amba Hotel at 4 Kilo Shi 80, commonly known as Elizabeth Street. The venue provides tables, chairs, a stage, and a microphone for weddings, concerts, bridal showers, graduations, birthdays, and meetings.",
+    contactPhone: "+251911999912",
+    contactEmail: "events@rasambahotel.et",
+    amenities: ["Parking for 50+ cars", "Tables and chairs", "Stage and microphone", "Six hall options"],
+    policies: "Events end by 11:00 PM (5:00 LT). Tella and flammable items are prohibited. Book at least one week in advance. Decor may be self-provided or arranged by the hotel.",
+    photos: ["/images/ras.jpg"],
+  });
+
+  await createHall(mgrRasAmba.id, {
+    venueId: venueRasAmba.id,
+    name: "Ras Amba Celebration Hall",
+    capacity: 500,
+    setting: "indoor",
+    notes: "Historic hall overlooking Addis valley with stage and PA system.",
+  });
+  await createHall(mgrRasAmba.id, {
+    venueId: venueRasAmba.id,
+    name: "Elizabeth Terrace Hall",
+    capacity: 120,
+    setting: "indoor",
+    notes: "Panoramic rooftop banquet room for intimate gatherings.",
+  });
+  console.log(`✓ Created: ${venueRasAmba.name} (2 halls, photo: /images/ras.jpg)`);
 
   // 4. Create Customers
   console.log("\n👥 Creating Customer Accounts...");
