@@ -1,38 +1,36 @@
 /**
  * Database Seed Script — Realistic Addis Ababa Venue Marketplace Data
  *
- * Populates the development database with rich, dynamic data:
- * - 4 Venues with 9 Bookable Halls across Addis Ababa (Bole, Megenagna, Tor Hailoch, Medhanialem)
- * - 4 Venue Managers with credentials (password: 'password123')
- * - 5 Customers with credentials
- * - 1 Super Admin account
- * - Dynamic Bookings across all lifecycle states:
- *     - Confirmed bookings (multi-hall banquets, conferences)
- *     - Requested bookings (awaiting manager re-verification)
- *     - Cancelled bookings (historical audit with released claims)
- * - Off-platform manual SlotBlocks (maintenance, VIP holds)
+ * Populates or updates the database idempotently:
+ * - Does NOT delete existing records (preserves all live/testing data).
+ * - Upserts Super Admin, 14 Venue Managers, 5 Customers, 6 Vendors.
+ * - Upserts 14 Venues across Addis Ababa with 29 bookable halls.
+ * - Safely ensures sample bookings, slot blocks, inquiries, and tickets without duplicate collisions.
+ * - Sets/updates passwords for seeded accounts to 'password123'.
  *
  * Run with: pnpm db:seed
  */
 
 import "dotenv/config";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "../lib/db/client";
 import {
   accounts,
-  credentials,
-  sessions,
   venues,
+  venueMembers,
   halls,
   slotClaims,
   bookings,
-  bookingHalls,
   inquiryConversations,
-  inquiryMessages,
   supportTickets,
-  auditLogs,
   vendors,
+  type Account,
+  type AccountRole,
+  type Venue,
+  type Hall,
+  type Vendor,
 } from "../lib/db/schema";
-import { createAccount, setPassword } from "../lib/services/account-service";
+import { setPassword } from "../lib/services/account-service";
 import { createVenue } from "../lib/services/venue-service";
 import { createHall } from "../lib/services/hall-service";
 import {
@@ -59,52 +57,419 @@ function getRelativeDate(daysOffset: number, hour: number = 10, minute: number =
   return d;
 }
 
-async function main() {
-  console.log("🌱 Starting Addis Venue Marketplace Seeding...\n");
+// ==========================================
+// Idempotent Helpers (No deletion of tables)
+// ==========================================
 
+async function upsertAccount(input: {
+  name: string;
+  phone: string;
+  role: AccountRole;
+  telegramId?: string | null;
+  password?: string;
+}): Promise<Account> {
   const db = getDb();
+  const normalizedPhone = input.phone.trim();
+  let [acc] = await db.select().from(accounts).where(eq(accounts.phone, normalizedPhone)).limit(1);
 
-  // 1. Clean existing records in reverse dependency order
-  console.log("🧹 Cleaning existing marketplace data...");
-  await db.delete(vendors);
-  await db.delete(supportTickets);
-  await db.delete(auditLogs);
-  await db.delete(inquiryMessages);
-  await db.delete(inquiryConversations);
-  await db.delete(bookingHalls);
-  await db.delete(bookings);
-  await db.delete(slotClaims);
-  await db.delete(halls);
-  await db.delete(venues);
-  await db.delete(sessions);
-  await db.delete(credentials);
-  await db.delete(accounts);
-  console.log("✓ Database cleaned.\n");
+  if (!acc) {
+    [acc] = await db
+      .insert(accounts)
+      .values({
+        name: input.name.trim(),
+        phone: normalizedPhone,
+        role: input.role,
+        telegramId: input.telegramId?.trim() ?? null,
+      })
+      .returning();
+  } else {
+    [acc] = await db
+      .update(accounts)
+      .set({
+        name: input.name.trim(),
+        role: input.role,
+        telegramId: input.telegramId?.trim() ?? acc.telegramId,
+        updatedAt: new Date(),
+      })
+      .where(eq(accounts.id, acc.id))
+      .returning();
+  }
 
-  // 2. Create Super Admin
-  console.log("👤 Creating Super Admin...");
-  const admin = await createAccount({
+  if (input.password) {
+    await setPassword(acc.id, input.password);
+  }
+
+  return acc;
+}
+
+async function upsertVenue(input: {
+  managerId: string;
+  name: string;
+  area: string;
+  type: string;
+  description: string;
+  contactPhone: string;
+  contactEmail: string;
+  amenities: string[];
+  policies: string;
+  photos: string[];
+}): Promise<Venue> {
+  const db = getDb();
+  let [venue] = await db.select().from(venues).where(eq(venues.name, input.name)).limit(1);
+
+  if (!venue) {
+    venue = await createVenue({
+      ...input,
+      allowMultiple: true,
+    });
+  } else {
+    [venue] = await db
+      .update(venues)
+      .set({
+        managerId: input.managerId,
+        area: input.area,
+        type: input.type,
+        description: input.description,
+        contactPhone: input.contactPhone,
+        contactEmail: input.contactEmail,
+        amenities: input.amenities,
+        policies: input.policies,
+        photos: input.photos,
+        updatedAt: new Date(),
+      })
+      .where(eq(venues.id, venue.id))
+      .returning();
+
+    // Ensure manager is in venue_members
+    await db
+      .insert(venueMembers)
+      .values({
+        venueId: venue.id,
+        accountId: input.managerId,
+        role: "owner",
+        title: "Primary Owner",
+        isActive: true,
+      })
+      .onConflictDoNothing();
+  }
+
+  return venue;
+}
+
+async function upsertHall(
+  managerId: string,
+  input: {
+    venueId: string;
+    name: string;
+    capacity: number;
+    setting: "indoor" | "covered-outdoor" | "uncovered-outdoor";
+    notes?: string;
+  }
+): Promise<Hall> {
+  const db = getDb();
+  let [hall] = await db
+    .select()
+    .from(halls)
+    .where(and(eq(halls.venueId, input.venueId), eq(halls.name, input.name)))
+    .limit(1);
+
+  if (!hall) {
+    hall = await createHall(managerId, input);
+  } else {
+    [hall] = await db
+      .update(halls)
+      .set({
+        capacity: input.capacity,
+        setting: input.setting,
+        notes: input.notes ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(halls.id, hall.id))
+      .returning();
+  }
+
+  return hall;
+}
+
+async function upsertVendor(
+  adminId: string,
+  input: {
+    ownerId: string;
+    name: string;
+    category: string;
+    description: string;
+    priceRange: string;
+    phone: string;
+    email: string;
+    area: string;
+    boostStatus?: "standard" | "boosted";
+    boostScore?: number;
+    verified?: boolean;
+  }
+): Promise<Vendor> {
+  const db = getDb();
+  let [vendor] = await db.select().from(vendors).where(eq(vendors.name, input.name)).limit(1);
+
+  if (!vendor) {
+    vendor = await createVendor({
+      ownerId: input.ownerId,
+      name: input.name,
+      category: input.category,
+      description: input.description,
+      priceRange: input.priceRange,
+      phone: input.phone,
+      email: input.email,
+      area: input.area,
+    });
+  } else {
+    [vendor] = await db
+      .update(vendors)
+      .set({
+        ownerId: input.ownerId,
+        category: input.category,
+        description: input.description,
+        priceRange: input.priceRange,
+        phone: input.phone,
+        email: input.email,
+        area: input.area,
+        updatedAt: new Date(),
+      })
+      .where(eq(vendors.id, vendor.id))
+      .returning();
+  }
+
+  if (input.boostStatus) {
+    await setVendorBoost({
+      vendorId: vendor.id,
+      callerId: input.ownerId,
+      boostStatus: input.boostStatus,
+      boostScore: input.boostScore ?? 0,
+    });
+  }
+
+  if (input.verified !== undefined) {
+    await setVendorVerified({
+      vendorId: vendor.id,
+      callerId: adminId,
+      verified: input.verified,
+    });
+  }
+
+  return vendor;
+}
+
+async function ensureBooking(input: {
+  venueId: string;
+  customerId: string;
+  hallIds: string[];
+  startTime: Date;
+  endTime: Date;
+  guestCount: number;
+  notes?: string;
+  confirmWithManagerId?: string;
+  cancelWithReason?: string;
+}) {
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.customerId, input.customerId),
+        eq(bookings.venueId, input.venueId),
+        eq(bookings.notes, input.notes ?? "")
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    const booking = await createBooking({
+      venueId: input.venueId,
+      customerId: input.customerId,
+      hallIds: input.hallIds,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      guestCount: input.guestCount,
+      notes: input.notes,
+    });
+
+    if (input.confirmWithManagerId) {
+      await confirmBooking({
+        bookingId: booking.id,
+        callerId: input.confirmWithManagerId,
+      });
+    } else if (input.cancelWithReason) {
+      await cancelBooking({
+        bookingId: booking.id,
+        callerId: input.customerId,
+        reason: input.cancelWithReason,
+      });
+    }
+
+    return booking;
+  } catch (err: any) {
+    console.warn(`Booking skipped (${err.message})`);
+    return null;
+  }
+}
+
+async function ensureSlotBlock(input: {
+  hallId: string;
+  managerId: string;
+  startTime: Date;
+  endTime: Date;
+  reason: string;
+}) {
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(slotClaims)
+    .where(
+      and(
+        eq(slotClaims.hallId, input.hallId),
+        eq(slotClaims.claimType, "block"),
+        eq(slotClaims.reason, input.reason),
+        eq(slotClaims.status, "active")
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await createSlotBlock(input);
+  } catch (err: any) {
+    console.warn(`SlotBlock skipped (${err.message})`);
+    return null;
+  }
+}
+
+async function ensureInquiry(input: {
+  venueId: string;
+  customerId: string;
+  subject: string;
+  initialMessage: string;
+  followUps?: { senderId: string; content: string }[];
+}) {
+  const db = getDb();
+  let [conv] = await db
+    .select()
+    .from(inquiryConversations)
+    .where(
+      and(
+        eq(inquiryConversations.venueId, input.venueId),
+        eq(inquiryConversations.customerId, input.customerId),
+        eq(inquiryConversations.subject, input.subject)
+      )
+    )
+    .limit(1);
+
+  if (conv) {
+    return conv;
+  }
+
+  conv = await createConversation({
+    venueId: input.venueId,
+    customerId: input.customerId,
+    subject: input.subject,
+    initialMessage: input.initialMessage,
+  });
+
+  if (input.followUps) {
+    for (const f of input.followUps) {
+      await sendMessage({
+        conversationId: conv.id,
+        senderId: f.senderId,
+        content: f.content,
+      });
+    }
+  }
+
+  return conv;
+}
+
+async function ensureTicket(input: {
+  authorId: string;
+  category: "venue_verification" | "booking_dispute" | "billing" | "technical" | "other";
+  subject: string;
+  message: string;
+  statusUpdate?: {
+    callerId: string;
+    status: "open" | "in_progress" | "resolved";
+    adminNotes?: string;
+  };
+}) {
+  const db = getDb();
+  let [ticket] = await db
+    .select()
+    .from(supportTickets)
+    .where(
+      and(
+        eq(supportTickets.authorId, input.authorId),
+        eq(supportTickets.subject, input.subject)
+      )
+    )
+    .limit(1);
+
+  if (ticket) {
+    return ticket;
+  }
+
+  ticket = await createTicket({
+    authorId: input.authorId,
+    category: input.category,
+    subject: input.subject,
+    message: input.message,
+  });
+
+  if (input.statusUpdate) {
+    await updateTicketStatus({
+      ticketId: ticket.id,
+      callerId: input.statusUpdate.callerId,
+      status: input.statusUpdate.status,
+      adminNotes: input.statusUpdate.adminNotes,
+    });
+  }
+
+  return ticket;
+}
+
+// ==========================================
+// Main Seeder (100% Idempotent)
+// ==========================================
+
+async function main() {
+  console.log("🌱 Starting Addis Venue Marketplace Idempotent Seeding...\n");
+
+  // 1. Super Admin
+  console.log("👤 Upserting Super Admin...");
+  const admin = await upsertAccount({
     name: "Addis Administrator",
     phone: "+251911000000",
     role: "super_admin",
     telegramId: "tg_admin",
+    password: "password123",
   });
-  await setPassword(admin.id, "password123");
-  console.log(`✓ Super Admin created: ${admin.name} (${admin.phone})`);
+  console.log(`✓ Super Admin ready: ${admin.name} (${admin.phone})`);
 
-  // 3. Create Venue Managers
-  console.log("\n🏨 Creating Venue Managers & Venues...");
+  // 2. Venue Managers & Venues
+  console.log("\n🏨 Upserting Venue Managers & Venues...");
 
   // Manager 1: Skylight Grand Hotel (Bole)
-  const mgrAbebe = await createAccount({
+  const mgrAbebe = await upsertAccount({
     name: "Abebe Kebede",
     phone: "+251911223344",
     role: "venue_manager",
     telegramId: "tg_mgr_a",
+    password: "password123",
   });
-  await setPassword(mgrAbebe.id, "password123");
-
-  const venueSkylight = await createVenue({
+  const venueSkylight = await upsertVenue({
     managerId: mgrAbebe.id,
     name: "Skylight Grand Hotel",
     area: "Bole",
@@ -116,43 +481,38 @@ async function main() {
     policies: "Outside catering not permitted. Acoustic curfews at 23:00 for outdoor terraces.",
     photos: ["/images/landing.jpg"],
   });
-
-  const hallSkylight1 = await createHall(mgrAbebe.id, {
+  const hallSkylight1 = await upsertHall(mgrAbebe.id, {
     venueId: venueSkylight.id,
     name: "Imperial Ballroom",
     capacity: 1200,
     setting: "indoor",
     notes: "Divisible into 3 sound-isolated salons. Pillarless hall with 8m ceiling height.",
   });
-
-  const hallSkylight2 = await createHall(mgrAbebe.id, {
+  const hallSkylight2 = await upsertHall(mgrAbebe.id, {
     venueId: venueSkylight.id,
     name: "Sky Deck Pavilion",
     capacity: 400,
     setting: "covered-outdoor",
     notes: "Panoramic city views over Bole with automated retractable glass canopy.",
   });
-
-  const hallSkylight3 = await createHall(mgrAbebe.id, {
+  const hallSkylight3 = await upsertHall(mgrAbebe.id, {
     venueId: venueSkylight.id,
     name: "Bole Executive Boardroom",
     capacity: 60,
     setting: "indoor",
     notes: "Executive conferencing with dual 85-inch screens and wireless presentation matrix.",
   });
-
-  console.log(`✓ Created: ${venueSkylight.name} (3 halls: Imperial Ballroom, Sky Deck, Boardroom)`);
+  console.log(`✓ Ready: ${venueSkylight.name} (3 halls)`);
 
   // Manager 2: Bellevue Hotel (Central Megenagna)
-  const mgrKebede = await createAccount({
+  const mgrKebede = await upsertAccount({
     name: "Kebede Tadesse",
     phone: "+251911999902",
     role: "venue_manager",
     telegramId: "tg_mgr_b",
+    password: "password123",
   });
-  await setPassword(mgrKebede.id, "password123");
-
-  const venueBellevue = await createVenue({
+  const venueBellevue = await upsertVenue({
     managerId: mgrKebede.id,
     name: "Bellevue Hotel",
     area: "Central Megenagna",
@@ -164,35 +524,31 @@ async function main() {
     policies: "Flammable items and outside draft tella prohibited. No outside catering.",
     photos: ["/images/bellevue.jpg"],
   });
-
-  const hallBellevue1 = await createHall(mgrKebede.id, {
+  const hallBellevue1 = await upsertHall(mgrKebede.id, {
     venueId: venueBellevue.id,
     name: "Diaspora Ballroom",
     capacity: 350,
     setting: "indoor",
     notes: "Warm crystal chandeliers, hardwood dance floor, and direct bridal suite entrance.",
   });
-
-  const hallBellevue2 = await createHall(mgrKebede.id, {
+  const hallBellevue2 = await upsertHall(mgrKebede.id, {
     venueId: venueBellevue.id,
     name: "Hillside Terrace Garden",
     capacity: 200,
     setting: "uncovered-outdoor",
     notes: "Landscaped hillside garden overlooking Megenagna valley, ideal for daytime receptions.",
   });
-
-  console.log(`✓ Created: ${venueBellevue.name} (2 halls: Diaspora Ballroom, Hillside Garden)`);
+  console.log(`✓ Ready: ${venueBellevue.name} (2 halls)`);
 
   // Manager 3: Tor Hailoch Golf Club (Tor Hailoch)
-  const mgrTigist = await createAccount({
+  const mgrTigist = await upsertAccount({
     name: "Tigist Haile",
     phone: "+251911334455",
     role: "venue_manager",
     telegramId: "tg_mgr_c",
+    password: "password123",
   });
-  await setPassword(mgrTigist.id, "password123");
-
-  const venueGolf = await createVenue({
+  const venueGolf = await upsertVenue({
     managerId: mgrTigist.id,
     name: "Tor Hailoch Golf Club",
     area: "Tor Hailoch",
@@ -204,35 +560,31 @@ async function main() {
     policies: "Outside catering permitted with a 400 ETB per plate kitchen surcharge.",
     photos: ["/images/Golf.jpg"],
   });
-
-  const hallGolf1 = await createHall(mgrTigist.id, {
+  const hallGolf1 = await upsertHall(mgrTigist.id, {
     venueId: venueGolf.id,
     name: "Fairway Grand Lawn",
     capacity: 2500,
     setting: "uncovered-outdoor",
     notes: "Main tournament-grade lawn capable of hosting large marquees and full festival setups.",
   });
-
-  const hallGolf2 = await createHall(mgrTigist.id, {
+  const hallGolf2 = await upsertHall(mgrTigist.id, {
     venueId: venueGolf.id,
     name: "Clubhouse Banquet Pavilion",
     capacity: 500,
     setting: "covered-outdoor",
     notes: "Sheltered permanent pavilion with open garden verandas and rustic stone fireplaces.",
   });
-
-  console.log(`✓ Created: ${venueGolf.name} (2 halls: Fairway Lawn, Clubhouse Pavilion)`);
+  console.log(`✓ Ready: ${venueGolf.name} (2 halls)`);
 
   // Manager 4: Harmony Hotel & Suites (Bole Medhanialem)
-  const mgrDawitMgr = await createAccount({
+  const mgrDawitMgr = await upsertAccount({
     name: "Dawit Zeleke",
     phone: "+251911556677",
     role: "venue_manager",
     telegramId: "tg_mgr_d",
+    password: "password123",
   });
-  await setPassword(mgrDawitMgr.id, "password123");
-
-  const venueHarmony = await createVenue({
+  const venueHarmony = await upsertVenue({
     managerId: mgrDawitMgr.id,
     name: "Harmony Hotel & Suites",
     area: "Bole Medhanialem",
@@ -244,34 +596,30 @@ async function main() {
     policies: "Music permitted until 00:00 midnight.",
     photos: ["/images/landingtwo.jpg"],
   });
-
-  const hallHarmony1 = await createHall(mgrDawitMgr.id, {
+  const hallHarmony1 = await upsertHall(mgrDawitMgr.id, {
     venueId: venueHarmony.id,
     name: "Abyssinia Ballroom",
     capacity: 500,
     setting: "indoor",
     notes: "Central ballroom equipped with acoustic wall paneling and professional stage.",
   });
-
-  const hallHarmony2 = await createHall(mgrDawitMgr.id, {
+  const hallHarmony2 = await upsertHall(mgrDawitMgr.id, {
     venueId: venueHarmony.id,
     name: "Sheba Garden Terrace",
     capacity: 150,
     setting: "covered-outdoor",
     notes: "Rooftop terrace garden featuring custom glass pergolas.",
   });
-
-  console.log(`✓ Created: ${venueHarmony.name} (2 halls: Abyssinia Ballroom, Sheba Garden)`);
+  console.log(`✓ Ready: ${venueHarmony.name} (2 halls)`);
 
   // Manager 5: Vibes Hotel and Spa (22 to Megenagna)
-  const mgrVibes = await createAccount({
+  const mgrVibes = await upsertAccount({
     name: "Tewodros Kassahun",
     phone: "+251911999903",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrVibes.id, "password123");
-
-  const venueVibes = await createVenue({
+  const venueVibes = await upsertVenue({
     managerId: mgrVibes.id,
     name: "Vibes Hotel and Spa",
     area: "22 to Megenagna",
@@ -283,32 +631,30 @@ async function main() {
     policies: "Flammable items and Tella (traditional Ethiopian beer) are prohibited. Beer and soft drinks are excluded; other beverages may be brought in with a corkage fee.",
     photos: ["/images/vibeshotel.jpg"],
   });
-
-  await createHall(mgrVibes.id, {
+  await upsertHall(mgrVibes.id, {
     venueId: venueVibes.id,
     name: "Diamond Ballroom",
     capacity: 300,
     setting: "indoor",
     notes: "Elegant crystal fixtures, full acoustic wall treatment, and sound booth.",
   });
-  await createHall(mgrVibes.id, {
+  await upsertHall(mgrVibes.id, {
     venueId: venueVibes.id,
     name: "Special Salon",
     capacity: 120,
     setting: "indoor",
     notes: "Intimate hall ideal for bridal showers, birthdays, and private dinners.",
   });
-  console.log(`✓ Created: ${venueVibes.name} (2 halls, photo: /images/vibeshotel.jpg)`);
+  console.log(`✓ Ready: ${venueVibes.name} (2 halls)`);
 
   // Manager 6: Kaleb Hotel (Bole / Edna Mall)
-  const mgrKaleb = await createAccount({
+  const mgrKaleb = await upsertAccount({
     name: "Almaz Bekele",
     phone: "+251911999904",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrKaleb.id, "password123");
-
-  const venueKaleb = await createVenue({
+  const venueKaleb = await upsertVenue({
     managerId: mgrKaleb.id,
     name: "Kaleb Hotel",
     area: "Bole / Edna Mall",
@@ -320,32 +666,30 @@ async function main() {
     policies: "Outside catering is allowed with a corkage fee. Meetings cost 1,350 ETB for a full day or 1,100 ETB for a half day. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least one month in advance.",
     photos: ["/images/kaleb.jpg"],
   });
-
-  await createHall(mgrKaleb.id, {
+  await upsertHall(mgrKaleb.id, {
     venueId: venueKaleb.id,
     name: "Grand Edna Hall",
     capacity: 250,
     setting: "indoor",
     notes: "Complete banquet hall with stage, professional projector, and surround sound.",
   });
-  await createHall(mgrKaleb.id, {
+  await upsertHall(mgrKaleb.id, {
     venueId: venueKaleb.id,
     name: "Bole Conference Suite",
     capacity: 80,
     setting: "indoor",
     notes: "Equipped boardroom for presentations, meetings, and intimate gatherings.",
   });
-  console.log(`✓ Created: ${venueKaleb.name} (2 halls, photo: /images/kaleb.jpg)`);
+  console.log(`✓ Ready: ${venueKaleb.name} (2 halls)`);
 
   // Manager 7: Stay Easy Hotel (Addisu Gebeya)
-  const mgrStayEasy = await createAccount({
+  const mgrStayEasy = await upsertAccount({
     name: "Mulugeta Assefa",
     phone: "+251911999905",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrStayEasy.id, "password123");
-
-  const venueStayEasy = await createVenue({
+  const venueStayEasy = await upsertVenue({
     managerId: mgrStayEasy.id,
     name: "Stay Easy Hotel",
     area: "Addisu Gebeya",
@@ -357,32 +701,30 @@ async function main() {
     policies: "Outside catering is not allowed. In-house catering costs 2,000–2,500 ETB per plate. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least one month in advance.",
     photos: ["/images/stayeasy.jpg"],
   });
-
-  await createHall(mgrStayEasy.id, {
+  await upsertHall(mgrStayEasy.id, {
     venueId: venueStayEasy.id,
     name: "Grand Celebration Hall",
     capacity: 1000,
     setting: "indoor",
     notes: "Massive pillarless celebration hall with dedicated backstage and VIP suite.",
   });
-  await createHall(mgrStayEasy.id, {
+  await upsertHall(mgrStayEasy.id, {
     venueId: venueStayEasy.id,
     name: "Terrace Banquet Hall",
     capacity: 300,
     setting: "indoor",
     notes: "Mid-sized hall with private bar setup and exterior terrace access.",
   });
-  console.log(`✓ Created: ${venueStayEasy.name} (2 halls, photo: /images/stayeasy.jpg)`);
+  console.log(`✓ Ready: ${venueStayEasy.name} (2 halls)`);
 
   // Manager 8: Sapphire Addis (Atlas)
-  const mgrSapphire = await createAccount({
+  const mgrSapphire = await upsertAccount({
     name: "Hiwot Girma",
     phone: "+251911999906",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrSapphire.id, "password123");
-
-  const venueSapphire = await createVenue({
+  const venueSapphire = await upsertVenue({
     managerId: mgrSapphire.id,
     name: "Sapphire Addis",
     area: "Atlas",
@@ -394,32 +736,30 @@ async function main() {
     policies: "Outside catering is not allowed. In-house catering costs 2,000–2,500 ETB per plate. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least five months in advance.",
     photos: ["/images/sap.jpg"],
   });
-
-  await createHall(mgrSapphire.id, {
+  await upsertHall(mgrSapphire.id, {
     venueId: venueSapphire.id,
     name: "Sapphire Crystal Hall",
     capacity: 400,
     setting: "indoor",
     notes: "Luxury ballroom with ornate chandeliers and direct elevator access.",
   });
-  await createHall(mgrSapphire.id, {
+  await upsertHall(mgrSapphire.id, {
     venueId: venueSapphire.id,
     name: "Atlas Executive Lounge",
     capacity: 120,
     setting: "indoor",
     notes: "Cozy private room for receptions, dinners, and small engagements.",
   });
-  console.log(`✓ Created: ${venueSapphire.name} (2 halls, photo: /images/sap.jpg)`);
+  console.log(`✓ Ready: ${venueSapphire.name} (2 halls)`);
 
   // Manager 9: De Leopol Hotel (Urael)
-  const mgrDeLeopol = await createAccount({
+  const mgrDeLeopol = await upsertAccount({
     name: "Yohannes Mengistu",
     phone: "+251911999907",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrDeLeopol.id, "password123");
-
-  const venueDeLeopol = await createVenue({
+  const venueDeLeopol = await upsertVenue({
     managerId: mgrDeLeopol.id,
     name: "De Leopol Hotel",
     area: "Urael",
@@ -431,32 +771,30 @@ async function main() {
     policies: "Outside beverages except beer and soft drinks can be brought in with a corkage fee. Tella and flammable items are prohibited.",
     photos: ["/images/deo.jpg"],
   });
-
-  await createHall(mgrDeLeopol.id, {
+  await upsertHall(mgrDeLeopol.id, {
     venueId: venueDeLeopol.id,
     name: "Leopol Grand Ballroom",
     capacity: 1000,
     setting: "indoor",
     notes: "Expansive ballroom with private entrance, stage, and integrated lighting.",
   });
-  await createHall(mgrDeLeopol.id, {
+  await upsertHall(mgrDeLeopol.id, {
     venueId: venueDeLeopol.id,
     name: "Bambis Garden Salon",
     capacity: 350,
     setting: "covered-outdoor",
     notes: "Covered veranda with garden perimeter, ideal for wedding cocktail hours.",
   });
-  console.log(`✓ Created: ${venueDeLeopol.name} (2 halls, photo: /images/deo.jpg)`);
+  console.log(`✓ Ready: ${venueDeLeopol.name} (2 halls)`);
 
   // Manager 10: Golden Tulip Addis Ababa Hotel (Berhane Adere Mall)
-  const mgrGoldenTulip = await createAccount({
+  const mgrGoldenTulip = await upsertAccount({
     name: "Solomon Worku",
     phone: "+251911999908",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrGoldenTulip.id, "password123");
-
-  const venueGoldenTulip = await createVenue({
+  const venueGoldenTulip = await upsertVenue({
     managerId: mgrGoldenTulip.id,
     name: "Golden Tulip Addis Ababa Hotel",
     area: "Berhane Adere Mall",
@@ -468,32 +806,30 @@ async function main() {
     policies: "Kitfo and Qurt are allowed for outside catering. All types of beverages can be brought in. Flammable items and outside catering are prohibited.",
     photos: ["/images/gold.jpg"],
   });
-
-  await createHall(mgrGoldenTulip.id, {
+  await upsertHall(mgrGoldenTulip.id, {
     venueId: venueGoldenTulip.id,
     name: "Tulip Banquet Salon",
     capacity: 150,
     setting: "indoor",
     notes: "Upscale dining and celebration salon with international audio-video support.",
   });
-  await createHall(mgrGoldenTulip.id, {
+  await upsertHall(mgrGoldenTulip.id, {
     venueId: venueGoldenTulip.id,
     name: "Adere Meeting Hall",
     capacity: 60,
     setting: "indoor",
     notes: "Private executive room for corporate meetings and family dinners.",
   });
-  console.log(`✓ Created: ${venueGoldenTulip.name} (2 halls, photo: /images/gold.jpg)`);
+  console.log(`✓ Ready: ${venueGoldenTulip.name} (2 halls)`);
 
   // Manager 11: Elilly International Hotel (Kazanchis)
-  const mgrElilly = await createAccount({
+  const mgrElilly = await upsertAccount({
     name: "Rahel Berhanu",
     phone: "+251911999909",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrElilly.id, "password123");
-
-  const venueElilly = await createVenue({
+  const venueElilly = await upsertVenue({
     managerId: mgrElilly.id,
     name: "Elilly International Hotel",
     area: "Kazanchis",
@@ -505,32 +841,30 @@ async function main() {
     policies: "Tella and flammable items are prohibited.",
     photos: ["/images/eli.jpg"],
   });
-
-  await createHall(mgrElilly.id, {
+  await upsertHall(mgrElilly.id, {
     venueId: venueElilly.id,
     name: "Queen Sheba Ballroom",
     capacity: 1000,
     setting: "indoor",
     notes: "Grand Kazanchis ballroom, high ceilings, VIP dressing rooms, and stage.",
   });
-  await createHall(mgrElilly.id, {
+  await upsertHall(mgrElilly.id, {
     venueId: venueElilly.id,
     name: "Blue Nile Banquet Hall",
     capacity: 400,
     setting: "indoor",
     notes: "Versatile medium banquet space with dedicated buffet and beverage stations.",
   });
-  console.log(`✓ Created: ${venueElilly.name} (2 halls, photo: /images/eli.jpg)`);
+  console.log(`✓ Ready: ${venueElilly.name} (2 halls)`);
 
   // Manager 12: Magnolia Hotel (Atlas)
-  const mgrMagnolia = await createAccount({
+  const mgrMagnolia = await upsertAccount({
     name: "Henok Fisseha",
     phone: "+251911999910",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrMagnolia.id, "password123");
-
-  const venueMagnolia = await createVenue({
+  const venueMagnolia = await upsertVenue({
     managerId: mgrMagnolia.id,
     name: "Magnolia Hotel",
     area: "Atlas",
@@ -542,32 +876,30 @@ async function main() {
     policies: "Wine, whiskey, liquor, Tej, and cake can be brought in with a corkage fee. Outside catering is prohibited. Tella and flammable items are prohibited.",
     photos: ["/images/mon.jpg"],
   });
-
-  await createHall(mgrMagnolia.id, {
+  await upsertHall(mgrMagnolia.id, {
     venueId: venueMagnolia.id,
     name: "Magnolia Grand Hall",
     capacity: 500,
     setting: "indoor",
     notes: "Modern banquet hall with mood lighting, sound control, and stage.",
   });
-  await createHall(mgrMagnolia.id, {
+  await upsertHall(mgrMagnolia.id, {
     venueId: venueMagnolia.id,
     name: "Koba Terrace Pavilion",
     capacity: 150,
     setting: "covered-outdoor",
     notes: "Covered terrace garden pavilion overlooking Atlas area.",
   });
-  console.log(`✓ Created: ${venueMagnolia.name} (2 halls, photo: /images/mon.jpg)`);
+  console.log(`✓ Ready: ${venueMagnolia.name} (2 halls)`);
 
   // Manager 13: Getfam Hotel (22)
-  const mgrGetfam = await createAccount({
+  const mgrGetfam = await upsertAccount({
     name: "Kidist Alemu",
     phone: "+251911999911",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrGetfam.id, "password123");
-
-  const venueGetfam = await createVenue({
+  const venueGetfam = await upsertVenue({
     managerId: mgrGetfam.id,
     name: "Getfam Hotel",
     area: "22",
@@ -579,32 +911,30 @@ async function main() {
     policies: "Outside beverages except beer can be brought in with a corkage fee. In-house catering costs 2,000–2,500 ETB per plate. Events end by 10:00 PM (4:00 LT). Tella and flammable items are prohibited. Book at least six months in advance.",
     photos: ["/images/get.jpg"],
   });
-
-  await createHall(mgrGetfam.id, {
+  await upsertHall(mgrGetfam.id, {
     venueId: venueGetfam.id,
     name: "Getfam Imperial Hall",
     capacity: 1000,
     setting: "indoor",
     notes: "5-star ballroom with VIP suite access, translation booths, and high ceilings.",
   });
-  await createHall(mgrGetfam.id, {
+  await upsertHall(mgrGetfam.id, {
     venueId: venueGetfam.id,
     name: "Besha Grand Salon",
     capacity: 450,
     setting: "indoor",
     notes: "Spacious hall suited for gala dinners, conferences, and engagements.",
   });
-  console.log(`✓ Created: ${venueGetfam.name} (2 halls, photo: /images/get.jpg)`);
+  console.log(`✓ Ready: ${venueGetfam.name} (2 halls)`);
 
   // Manager 14: Ras Amba Hotel (4 Kilo / Elizabeth Street)
-  const mgrRasAmba = await createAccount({
+  const mgrRasAmba = await upsertAccount({
     name: "Fikadu Tefera",
     phone: "+251911999912",
     role: "venue_manager",
+    password: "password123",
   });
-  await setPassword(mgrRasAmba.id, "password123");
-
-  const venueRasAmba = await createVenue({
+  const venueRasAmba = await upsertVenue({
     managerId: mgrRasAmba.id,
     name: "Ras Amba Hotel",
     area: "4 Kilo / Elizabeth Street",
@@ -616,297 +946,246 @@ async function main() {
     policies: "Events end by 11:00 PM (5:00 LT). Tella and flammable items are prohibited. Book at least one week in advance. Decor may be self-provided or arranged by the hotel.",
     photos: ["/images/ras.jpg"],
   });
-
-  await createHall(mgrRasAmba.id, {
+  await upsertHall(mgrRasAmba.id, {
     venueId: venueRasAmba.id,
     name: "Ras Amba Celebration Hall",
     capacity: 500,
     setting: "indoor",
     notes: "Historic hall overlooking Addis valley with stage and PA system.",
   });
-  await createHall(mgrRasAmba.id, {
+  await upsertHall(mgrRasAmba.id, {
     venueId: venueRasAmba.id,
     name: "Elizabeth Terrace Hall",
     capacity: 120,
     setting: "indoor",
     notes: "Panoramic rooftop banquet room for intimate gatherings.",
   });
-  console.log(`✓ Created: ${venueRasAmba.name} (2 halls, photo: /images/ras.jpg)`);
+  console.log(`✓ Ready: ${venueRasAmba.name} (2 halls)`);
 
-  // 4. Create Customers
-  console.log("\n👥 Creating Customer Accounts...");
-
-  const custDawit = await createAccount({
+  // 3. Customer Accounts
+  console.log("\n👥 Upserting Customer Accounts...");
+  const custDawit = await upsertAccount({
     name: "Dawit Customer",
     phone: "+251915112233",
     role: "user",
     telegramId: "tg_user_dawit",
+    password: "password123",
   });
-  await setPassword(custDawit.id, "password123");
-
-  const custSara = await createAccount({
+  const custSara = await upsertAccount({
     name: "Sara Customer",
     phone: "+251915999902",
     role: "user",
     telegramId: "tg_user_sara",
+    password: "password123",
   });
-  await setPassword(custSara.id, "password123");
-
-  const custYared = await createAccount({
-    name: "Yared Customer",
-    phone: "+251915778899",
-    role: "user",
-    telegramId: "tg_user_yared",
-  });
-  await setPassword(custYared.id, "password123");
-
-  const custBetty = await createAccount({
+  const custBetty = await upsertAccount({
     name: "Bethlehem Customer",
     phone: "+251915443322",
     role: "user",
     telegramId: "tg_user_betty",
+    password: "password123",
   });
-  await setPassword(custBetty.id, "password123");
-
-  const custElias = await createAccount({
+  const custYared = await upsertAccount({
+    name: "Yared Customer",
+    phone: "+251915778899",
+    role: "user",
+    telegramId: "tg_user_yared",
+    password: "password123",
+  });
+  const custElias = await upsertAccount({
     name: "Elias Customer",
     phone: "+251915667788",
     role: "user",
     telegramId: "tg_user_elias",
+    password: "password123",
   });
-  await setPassword(custElias.id, "password123");
+  console.log("✓ 5 Customer accounts ready (password: 'password123')");
 
-  console.log(`✓ 5 Customer accounts created (all with password: 'password123')`);
-
-  // 5. Seed Bookings Across All Lifecycle States
-  console.log("\n📅 Seeding Dynamic Bookings & Multi-Hall Invariants...");
-
-  // --- Scenario A: Multi-Hall Confirmed Booking (Dawit books Imperial Ballroom + Sky Deck at Skylight) ---
-  const bookingA = await createBooking({
+  // 4. Sample Bookings (Non-destructive)
+  console.log("\n📅 Ensuring Bookings Lifecycle Invariants...");
+  await ensureBooking({
     venueId: venueSkylight.id,
     customerId: custDawit.id,
     hallIds: [hallSkylight1.id, hallSkylight2.id],
-    startTime: getRelativeDate(2, 11, 0), // in 2 days from 11:00 to 18:00
+    startTime: getRelativeDate(2, 11, 0),
     endTime: getRelativeDate(2, 18, 0),
     guestCount: 650,
     notes: "Grand Wedding Banquet & Reception across both ballroom and sky pavilion",
+    confirmWithManagerId: mgrAbebe.id,
   });
-  // Manager Abebe verifies and confirms booking
-  await confirmBooking({
-    bookingId: bookingA.id,
-    callerId: mgrAbebe.id,
-  });
-  console.log(`✓ [CONFIRMED] Multi-hall booking #${bookingA.id.slice(0, 8)} on Skylight (Imperial + Sky Deck)`);
 
-  // --- Scenario B: Confirmed Corporate Tech Conference (Sara books Abyssinia Ballroom at Harmony) ---
-  const bookingB = await createBooking({
+  await ensureBooking({
     venueId: venueHarmony.id,
     customerId: custSara.id,
     hallIds: [hallHarmony1.id],
-    startTime: getRelativeDate(1, 9, 0), // tomorrow from 09:00 to 17:00
+    startTime: getRelativeDate(1, 9, 0),
     endTime: getRelativeDate(1, 17, 0),
     guestCount: 350,
     notes: "East Africa FinTech Forum 2026",
+    confirmWithManagerId: mgrDawitMgr.id,
   });
-  await confirmBooking({
-    bookingId: bookingB.id,
-    callerId: mgrDawitMgr.id,
-  });
-  console.log(`✓ [CONFIRMED] Booking #${bookingB.id.slice(0, 8)} on Harmony (Abyssinia Ballroom)`);
 
-  // --- Scenario C: Confirmed Luncheon (Bethlehem books Diaspora Ballroom at Bellevue for TODAY) ---
-  const bookingC = await createBooking({
+  await ensureBooking({
     venueId: venueBellevue.id,
     customerId: custBetty.id,
     hallIds: [hallBellevue1.id],
-    startTime: getRelativeDate(0, 12, 0), // today 12:00 to 16:00
+    startTime: getRelativeDate(0, 12, 0),
     endTime: getRelativeDate(0, 16, 0),
     guestCount: 180,
     notes: "Corporate anniversary luncheon & awards ceremony",
+    confirmWithManagerId: mgrKebede.id,
   });
-  await confirmBooking({
-    bookingId: bookingC.id,
-    callerId: mgrKebede.id,
-  });
-  console.log(`✓ [CONFIRMED - TODAY] Booking #${bookingC.id.slice(0, 8)} on Bellevue (Diaspora Ballroom)`);
 
-  // --- Scenario D: Requested Booking Awaiting Re-verification (Yared requests Golf Club Pavilion) ---
-  const bookingD = await createBooking({
+  await ensureBooking({
     venueId: venueGolf.id,
     customerId: custYared.id,
     hallIds: [hallGolf2.id],
-    startTime: getRelativeDate(3, 14, 0), // in 3 days 14:00 to 20:00
+    startTime: getRelativeDate(3, 14, 0),
     endTime: getRelativeDate(3, 20, 0),
     guestCount: 300,
     notes: "Family Golden Jubilee Celebration — awaiting manager slot confirmation",
   });
-  console.log(`✓ [REQUESTED] Booking #${bookingD.id.slice(0, 8)} on Golf Club (Clubhouse Pavilion)`);
 
-  // --- Scenario E: Requested Mega Gala (Elias requests Fairway Lawn at Golf Club) ---
-  const bookingE = await createBooking({
+  await ensureBooking({
     venueId: venueGolf.id,
     customerId: custElias.id,
     hallIds: [hallGolf1.id],
-    startTime: getRelativeDate(7, 15, 0), // in 7 days 15:00 to 22:00
+    startTime: getRelativeDate(7, 15, 0),
     endTime: getRelativeDate(7, 22, 0),
     guestCount: 1500,
     notes: "Annual Charity Concert & Gala Dinner",
   });
-  console.log(`✓ [REQUESTED] Booking #${bookingE.id.slice(0, 8)} on Golf Club (Fairway Lawn)`);
 
-  // --- Scenario F: Cancelled Booking (Dawit had requested Executive Boardroom, cancelled) ---
-  const bookingF = await createBooking({
+  await ensureBooking({
     venueId: venueSkylight.id,
     customerId: custDawit.id,
     hallIds: [hallSkylight3.id],
-    startTime: getRelativeDate(4, 9, 0), // in 4 days 09:00 to 13:00
+    startTime: getRelativeDate(4, 9, 0),
     endTime: getRelativeDate(4, 13, 0),
     guestCount: 40,
     notes: "Executive quarterly review meeting",
+    cancelWithReason: "Board meeting rescheduled to next month; slot freed",
   });
-  await cancelBooking({
-    bookingId: bookingF.id,
-    callerId: custDawit.id,
-    reason: "Board meeting rescheduled to next month; slot freed",
-  });
-  console.log(`✓ [CANCELLED] Booking #${bookingF.id.slice(0, 8)} on Skylight Boardroom (Slot claims released)`);
+  console.log("✓ Sample bookings verified");
 
-  // 6. Seed Off-Platform Manual SlotBlocks (Collision Defense)
-  console.log("\n🔒 Seeding Off-Platform SlotBlocks (Manager Manual Blocks)...");
-
-  // Block 1: Off-platform State Banquet on Imperial Ballroom tonight
-  await createSlotBlock({
+  // 5. SlotBlocks (Off-platform holds)
+  console.log("\n🔒 Ensuring Off-Platform SlotBlocks...");
+  await ensureSlotBlock({
     hallId: hallSkylight1.id,
-    startTime: getRelativeDate(0, 18, 0), // today 18:00 to 23:00
+    startTime: getRelativeDate(0, 18, 0),
     endTime: getRelativeDate(0, 23, 0),
     reason: "Off-platform booking: Ministry State Dinner",
     managerId: mgrAbebe.id,
   });
-  console.log(`✓ [SLOT-BLOCK] Skylight Imperial Ballroom: Today 18:00 - 23:00 (Ministry State Dinner)`);
 
-  // Block 2: Sound calibration maintenance at Harmony Abyssinia Ballroom
-  await createSlotBlock({
+  await ensureSlotBlock({
     hallId: hallHarmony1.id,
-    startTime: getRelativeDate(3, 8, 0), // in 3 days 08:00 to 12:00
+    startTime: getRelativeDate(3, 8, 0),
     endTime: getRelativeDate(3, 12, 0),
     reason: "Scheduled Acoustic Calibration & Rigging Maintenance",
     managerId: mgrDawitMgr.id,
   });
-  console.log(`✓ [SLOT-BLOCK] Harmony Abyssinia Ballroom: In 3 days 08:00 - 12:00 (Maintenance)`);
 
-  // Block 3: Fairway Turf Treatment at Golf Club
-  await createSlotBlock({
+  await ensureSlotBlock({
     hallId: hallGolf1.id,
-    startTime: getRelativeDate(1, 6, 0), // tomorrow 06:00 to 11:00
+    startTime: getRelativeDate(1, 6, 0),
     endTime: getRelativeDate(1, 11, 0),
     reason: "Quarterly Fairway Turf Care & Sprinkler Overhaul",
     managerId: mgrTigist.id,
   });
-  console.log(`✓ [SLOT-BLOCK] Golf Club Fairway Lawn: Tomorrow 06:00 - 11:00 (Turf Care)`);
+  console.log("✓ Slot blocks verified");
 
-  // 7. Seed Venue Inquiry Conversations & Messages (Phase 6)
-  console.log("\n💬 Seeding Pre-Booking Inquiry Conversations...");
-
-  // Inquiry 1: Sara asks Skylight about Coffee Ceremony & Live Band
-  const inq1 = await createConversation({
+  // 6. Pre-booking Inquiries
+  console.log("\n💬 Ensuring Inquiry Conversations...");
+  await ensureInquiry({
     venueId: venueSkylight.id,
     customerId: custSara.id,
     subject: "Traditional Coffee Ceremony & Live Band Setup",
     initialMessage: "Greetings Abebe, does the Imperial Ballroom package allow setting up a dedicated traditional Ethiopian coffee ceremony in the pre-function area, and can our live band soundcheck at 14:00?",
+    followUps: [
+      {
+        senderId: mgrAbebe.id,
+        content: "Selam Sara! Yes, we have a dedicated granite-floored foyer specifically configured for traditional coffee setups with adequate ventilation. Band soundchecks are welcome from 13:30 onwards.",
+      },
+      {
+        senderId: custSara.id,
+        content: "Wonderful! We will finalize our guest list and submit a booking request for the weekend.",
+      },
+    ],
   });
-  await sendMessage({
-    conversationId: inq1.id,
-    senderId: mgrAbebe.id,
-    content: "Selam Sara! Yes, we have a dedicated granite-floored foyer specifically configured for traditional coffee setups with adequate ventilation. Band soundchecks are welcome from 13:30 onwards.",
-  });
-  await sendMessage({
-    conversationId: inq1.id,
-    senderId: custSara.id,
-    content: "Wonderful! We will finalize our guest list and submit a booking request for the weekend.",
-  });
-  console.log(`✓ [INQUIRY] Skylight: 3 messages between Sara and Abebe ("Traditional Coffee Ceremony")`);
 
-  // Inquiry 2: Yared asks Bellevue about Parking & Security
-  const inq2 = await createConversation({
+  await ensureInquiry({
     venueId: venueBellevue.id,
     customerId: custYared.id,
     subject: "Guest Parking & Bridal Suite Access",
     initialMessage: "Hello Kebede, we are anticipating around 70 vehicles for our evening reception. Is there overflow parking with security guards?",
+    followUps: [
+      {
+        senderId: mgrKebede.id,
+        content: "Good afternoon Yared. We have 60 secured spots in our lower gated lot, plus a partnership with the neighboring commercial lot for 40 additional spaces guarded by our security team.",
+      },
+    ],
   });
-  await sendMessage({
-    conversationId: inq2.id,
-    senderId: mgrKebede.id,
-    content: "Good afternoon Yared. We have 60 secured spots in our lower gated lot, plus a partnership with the neighboring commercial lot for 40 additional spaces guarded by our security team.",
-  });
-  console.log(`✓ [INQUIRY] Bellevue: 2 messages between Yared and Kebede ("Guest Parking")`);
 
-  // Inquiry 3: Elias asks Golf Club about Marquee Tents
-  const inq3 = await createConversation({
+  await ensureInquiry({
     venueId: venueGolf.id,
     customerId: custElias.id,
     subject: "High-Peak Marquee Setup on Fairway Lawn",
     initialMessage: "Hello Tigist, if we rent the Fairway Grand Lawn for a charity event, does your team provide ground anchoring for heavy hexagonal marquees?",
   });
-  console.log(`✓ [INQUIRY] Golf Club: 1 message from Elias ("High-Peak Marquee Setup")`);
+  console.log("✓ Inquiries verified");
 
-  // 7. Seed Support Tickets across states
-  console.log("\n🎫 Creating Support Tickets...");
-  const t1 = await createTicket({
+  // 7. Support Tickets
+  console.log("\n🎫 Ensuring Support Tickets...");
+  await ensureTicket({
     authorId: custSara.id,
     category: "booking_dispute",
     subject: "Deposit reconciliation for Skylight Ballroom",
     message: "I sent the 30% advance via CBE Birr on Tuesday, but the venue status hasn't transitioned to confirmed yet.",
   });
-  console.log(`✓ [TICKET open] Sara: Deposit reconciliation`);
 
-  const t2 = await createTicket({
+  await ensureTicket({
     authorId: mgrAbebe.id,
     category: "venue_verification",
     subject: "Commercial business license renewal",
     message: "Uploaded renewed Addis Ababa Trade Bureau license for Skylight Hotel. Please verify for our badge.",
+    statusUpdate: {
+      callerId: admin.id,
+      status: "in_progress",
+      adminNotes: "Document checked against ministry database, awaiting final tax clearance.",
+    },
   });
-  await updateTicketStatus({
-    ticketId: t2.id,
-    callerId: admin.id,
-    status: "in_progress",
-    adminNotes: "Document checked against ministry database, awaiting final tax clearance.",
-  });
-  console.log(`✓ [TICKET in_progress] Abebe: Commercial license renewal`);
 
-  const t3 = await createTicket({
+  await ensureTicket({
     authorId: custYared.id,
     category: "billing",
     subject: "VAT receipt request for corporate summit",
     message: "Our finance team requires an electronic VAT invoice with TIN 0038491823.",
+    statusUpdate: {
+      callerId: admin.id,
+      status: "resolved",
+      adminNotes: "Official VAT receipt issued and dispatched to finance team.",
+    },
   });
-  await updateTicketStatus({
-    ticketId: t3.id,
-    callerId: admin.id,
-    status: "resolved",
-    adminNotes: "Official VAT receipt issued and dispatched to finance team.",
-  });
-  console.log(`✓ [TICKET resolved] Yared: VAT receipt request`);
 
-  const t4 = await createTicket({
+  await ensureTicket({
     authorId: mgrTigist.id,
     category: "technical",
     subject: "Fairway Lawn calendar sync",
     message: "Off-platform golf tournament block placed for next weekend seems to show on the public page correctly. Confirming if notification emails are sent.",
   });
-  console.log(`✓ [TICKET open] Tigist: Fairway Lawn calendar sync`);
+  console.log("✓ Support tickets verified");
 
-  // 8. Seed Vendors (Deterministic Ranking & Isolation)
-  console.log("\n✨ Creating Event Vendors (Deterministic Ranking & Isolation)...");
-
-  // Vendor 1: Selamawit Fine Art Photography (Boosted + Verified)
-  const accSelam = await createAccount({
+  // 8. Event Vendors
+  console.log("\n✨ Upserting Event Vendors...");
+  const accSelam = await upsertAccount({
     name: "Selamawit Photography",
     phone: "+251911440001",
     role: "vendor",
     telegramId: "tg_vendor_demo",
+    password: "password123",
   });
-  await setPassword(accSelam.id, "password123");
-  const v1 = await createVendor({
+  await upsertVendor(admin.id, {
     ownerId: accSelam.id,
     name: "Selamawit Fine Art Photography",
     category: "Photography",
@@ -915,28 +1194,18 @@ async function main() {
     phone: "+251911440001",
     email: "selamawit@addisvisuals.et",
     area: "Bole",
-  });
-  await setVendorBoost({
-    vendorId: v1.id,
-    callerId: accSelam.id,
     boostStatus: "boosted",
     boostScore: 100,
-  });
-  await setVendorVerified({
-    vendorId: v1.id,
-    callerId: admin.id,
     verified: true,
   });
-  console.log(`✓ [VENDOR Rank #1: Boosted+Verified] Selamawit Fine Art Photography`);
 
-  // Vendor 2: Finfinne Royal Catering (Boosted + Verified)
-  const accFikru = await createAccount({
+  const accFikru = await upsertAccount({
     name: "Fikru Royal Catering",
     phone: "+251911440002",
     role: "vendor",
+    password: "password123",
   });
-  await setPassword(accFikru.id, "password123");
-  const v2 = await createVendor({
+  await upsertVendor(admin.id, {
     ownerId: accFikru.id,
     name: "Finfinne Royal Catering",
     category: "Catering",
@@ -945,28 +1214,18 @@ async function main() {
     phone: "+251911440002",
     email: "info@finfinneroyal.et",
     area: "Kazanchis",
-  });
-  await setVendorBoost({
-    vendorId: v2.id,
-    callerId: accFikru.id,
     boostStatus: "boosted",
     boostScore: 75,
-  });
-  await setVendorVerified({
-    vendorId: v2.id,
-    callerId: admin.id,
     verified: true,
   });
-  console.log(`✓ [VENDOR Rank #2: Boosted+Verified] Finfinne Royal Catering`);
 
-  // Vendor 3: Enat Wedding Stage & Florals (Standard + Verified)
-  const accMartha = await createAccount({
+  const accMartha = await upsertAccount({
     name: "Martha Decor",
     phone: "+251911440003",
     role: "vendor",
+    password: "password123",
   });
-  await setPassword(accMartha.id, "password123");
-  const v3 = await createVendor({
+  await upsertVendor(admin.id, {
     ownerId: accMartha.id,
     name: "Enat Wedding Stage & Florals",
     category: "Decor & Stage",
@@ -975,22 +1234,16 @@ async function main() {
     phone: "+251911440003",
     email: "decor@enatwedding.et",
     area: "Bole",
-  });
-  await setVendorVerified({
-    vendorId: v3.id,
-    callerId: admin.id,
     verified: true,
   });
-  console.log(`✓ [VENDOR Rank #3: Standard+Verified] Enat Wedding Stage & Florals`);
 
-  // Vendor 4: Zemen Traditional Bridal Attire (Standard + Verified)
-  const accGenet = await createAccount({
+  const accGenet = await upsertAccount({
     name: "Genet Traditional Wear",
     phone: "+251911440004",
     role: "vendor",
+    password: "password123",
   });
-  await setPassword(accGenet.id, "password123");
-  const v4 = await createVendor({
+  await upsertVendor(admin.id, {
     ownerId: accGenet.id,
     name: "Zemen Traditional Bridal Attire",
     category: "Traditional Attire",
@@ -999,22 +1252,16 @@ async function main() {
     phone: "+251911440004",
     email: "zemen@addisattire.et",
     area: "Old Airport",
-  });
-  await setVendorVerified({
-    vendorId: v4.id,
-    callerId: admin.id,
     verified: true,
   });
-  console.log(`✓ [VENDOR Rank #4: Standard+Verified] Zemen Traditional Bridal Attire`);
 
-  // Vendor 5: Sheger Groove Sound & Lighting (Standard + Unverified)
-  const accErmias = await createAccount({
+  const accErmias = await upsertAccount({
     name: "Ermias Sound",
     phone: "+251911440005",
     role: "vendor",
+    password: "password123",
   });
-  await setPassword(accErmias.id, "password123");
-  await createVendor({
+  await upsertVendor(admin.id, {
     ownerId: accErmias.id,
     name: "Sheger Groove Sound & Lighting",
     category: "Sound & DJ",
@@ -1024,16 +1271,14 @@ async function main() {
     email: "shegergroove@sound.et",
     area: "Piazza",
   });
-  console.log(`✓ [VENDOR Rank #5: Standard] Sheger Groove Sound & Lighting`);
 
-  // Vendor 6: Entoto Sweet Treats & Pastry (Standard + Unverified)
-  const accRuth = await createAccount({
+  const accRuth = await upsertAccount({
     name: "Ruth Pastry",
     phone: "+251911440006",
     role: "vendor",
+    password: "password123",
   });
-  await setPassword(accRuth.id, "password123");
-  await createVendor({
+  await upsertVendor(admin.id, {
     ownerId: accRuth.id,
     name: "Entoto Sweet Treats & Wedding Cakes",
     category: "Cake & Pastry",
@@ -1043,20 +1288,10 @@ async function main() {
     email: "ruth@entotocakes.et",
     area: "Tor Hailoch",
   });
-  console.log(`✓ [VENDOR Rank #6: Standard] Entoto Sweet Treats & Wedding Cakes`);
+  console.log("✓ Vendors verified");
 
   console.log("\n========================================================");
-  console.log("🎉 SEEDING COMPLETED SUCCESSFULLY!");
-  console.log("========================================================");
-  console.log("Test Login Credentials (all passwords: 'password123'):");
-  console.log("  • Manager A (Skylight Grand Hotel): +251911223344");
-  console.log("  • Manager B (Bellevue Hotel):       +251911999902");
-  console.log("  • Manager C (Tor Hailoch Golf):     +251911334455");
-  console.log("  • Manager D (Harmony Hotel):        +251911556677");
-  console.log("  • Demo Vendor (Selamawit Photo):   +251911440001");
-  console.log("  • Customer Dawit:                  +251915112233");
-  console.log("  • Customer Sara:                   +251915999902");
-  console.log("  • Super Admin:                     +251911000000");
+  console.log("🎉 IDEMPOTENT SEEDING COMPLETED SUCCESSFULLY!");
   console.log("========================================================\n");
 
   process.exit(0);

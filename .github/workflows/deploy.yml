@@ -43,4 +43,6 @@ jobs:
           username: ${{ secrets.SERVER_USER || 'venue' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          script: /home/venue/deploy.sh
+          script: |
+            /home/venue/deploy.sh
+            cd /home/venue/addisvenue && pnpm db:seed
