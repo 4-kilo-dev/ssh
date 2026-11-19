@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Unified Site Header using standard design tokens */}
       <header className="site-header">
-        <div className="container header-inner">
+        <div className={`${isAdminView ? "fluid-container" : "container"} header-inner`}>
           <Link
             className="brand-lockup"
             href={isAdminView ? "/admin" : isManagerView ? "/manager/venue" : isVendorView ? "/vendors" : "/"}
@@ -311,8 +311,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main
         id="main-content"
-        className={`container main-content site-wide-refresh ${
-          isAdminView ? "admin-area" : isVendorView ? "vendor-area" : ""
+        className={`${
+          isAdminView
+            ? "main-content-fluid site-wide-refresh admin-area-fluid"
+            : `container main-content site-wide-refresh ${isVendorView ? "vendor-area" : ""}`
         }`}
         tabIndex={-1}
       >
@@ -321,7 +323,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Footer */}
       <footer className="site-footer">
-        <div className="container footer-inner">
+        <div className={`${isAdminView ? "fluid-container" : "container"} footer-inner`}>
           <div className="footer-brand-button" aria-describedby="footer-logo-help">
             <span className="brand-mark" aria-hidden="true">
               <span />

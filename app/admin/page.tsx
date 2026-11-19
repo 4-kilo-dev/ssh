@@ -412,7 +412,7 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="admin-area site-wide-refresh" style={{ maxWidth: 1480, margin: "0 auto", padding: "1.5rem 1.25rem 5rem" }}>
+    <div style={{ width: "100%", maxWidth: "100%", paddingBottom: "3rem" }}>
       {/* Top Console Bar */}
       <div
         style={{
@@ -761,13 +761,7 @@ export default function SuperAdminPage() {
         {/* Right Main Content Pane */}
         <main style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
           {/* Top 5-Column High-Density KPI Strip */}
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-              gap: "14px",
-            }}
-          >
+          <section className="admin-kpi-strip">
             {/* Total Venues Card */}
             <div
               className="card"
