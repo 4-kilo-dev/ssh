@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   Sparkles,
   ShieldCheck,
-  Building2,
-  ExternalLink,
   Search,
   Filter,
   CheckCircle2,
@@ -16,8 +14,6 @@ import {
   MapPin,
   Tag,
   Zap,
-  UserCheck,
-  Plus,
   ArrowUpDown,
   RotateCcw,
   ArrowRight,
@@ -148,27 +144,6 @@ export default function VendorsDirectoryPage() {
     }
   };
 
-  const handleDemoVendorLogin = async () => {
-    setStatusMessage(null);
-    try {
-      const res = await fetch("/api/auth/demo-vendor", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setAccount(data.vendor);
-        setMyVendor(data.vendor.profile || null);
-        setStatusMessage({
-          type: "success",
-          text: `Signed in as Demo Vendor: ${data.vendor.name} (${data.vendor.phone})`,
-        });
-        loadVendors();
-      } else {
-        setStatusMessage({ type: "error", text: data.error || "Failed to log in as demo vendor" });
-      }
-    } catch (err: any) {
-      setStatusMessage({ type: "error", text: err.message });
-    }
-  };
-
   const handleToggleMyBoost = async () => {
     if (!myVendor) return;
     setTogglingBoost(true);
@@ -229,17 +204,6 @@ export default function VendorsDirectoryPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem" }}>
-          <Link href="/manager/venue" className="btn btn-outline" style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <Building2 size={15} /> Manager Workspace
-          </Link>
-          <Link href="/admin" className="btn btn-outline" style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <ShieldCheck size={15} /> Super Admin
-          </Link>
-          <Link href="/" className="btn btn-outline" style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <ExternalLink size={15} /> Public Site
-          </Link>
-        </div>
       </div>
 
       {/* Status Notice */}
@@ -288,7 +252,7 @@ export default function VendorsDirectoryPage() {
               <div style={{ fontSize: "0.8rem", color: "var(--muted, #64748b)" }}>
                 {myVendor
                   ? `Your Vendor Profile: ${myVendor.name} • Status: ${myVendor.boostStatus.toUpperCase()}`
-                  : "Sign in with a vendor account to test boost placements and rankings"}
+                  : "Sign in with a vendor account to manage your listing and boost placement"}
               </div>
             </div>
           </div>
@@ -306,13 +270,6 @@ export default function VendorsDirectoryPage() {
               </button>
             )}
 
-            <button
-              onClick={handleDemoVendorLogin}
-              className="btn btn-outline"
-              style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
-            >
-              <UserCheck size={16} /> 1-Click Demo Vendor Login
-            </button>
           </div>
         </div>
       </div>
