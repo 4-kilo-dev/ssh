@@ -22,15 +22,26 @@ function appUrl() {
   return url;
 }
 
-export async function sendMiniAppWelcome(chatId: number | string): Promise<void> {
+export async function sendMiniAppWelcome(chatId: number | string, userId?: number, name = ""): Promise<void> {
   const url = appUrl().href;
   await callTelegram("setChatMenuButton", { chat_id: chatId, menu_button: { type: "web_app", text: "Open Addis Gathering", web_app: { url } } });
+  const account = userId ? await getAccountByTelegramId(String(userId)) : null;
+  const needsPassword = !account || !(await hasCredentials(account.id));
+  if (needsPassword) {
+    const setupUrl = new URL("/tg", url);
+    setupUrl.searchParams.set("setup", "password");
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: `Welcome${name ? `, ${name}` : ""}! Create a password to secure your Addis Gathering account. The password is entered inside the Mini App, not in this chat.`,
+      reply_markup: { inline_keyboard: [[{ text: "Create my password", web_app: { url: setupUrl.href } }]] },
+    });
+    return;
+  }
   await callTelegram("sendMessage", {
     chat_id: chatId,
-    text: "Welcome to Addis Gathering. Share your own phone number below to set up a password for the website and mobile app. Enter your password only on the secure setup page.",
-    reply_markup: { keyboard: [[{ text: "Share my phone number", request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
+    text: "Welcome back to Addis Gathering. Your account is ready.",
+    reply_markup: { inline_keyboard: [[{ text: "Open Addis Gathering", web_app: { url } }]] },
   });
-  await callTelegram("sendMessage", { chat_id: chatId, text: "You can also explore venues now.", reply_markup: { inline_keyboard: [[{ text: "Open Addis Gathering", web_app: { url } }]] } });
 }
 
 export async function setupTelegramPassword(chatId: number, userId: number, name: string, rawPhone: string): Promise<void> {

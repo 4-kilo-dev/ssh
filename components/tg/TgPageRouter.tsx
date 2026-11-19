@@ -14,6 +14,7 @@ import { TgVendorBrowser } from "@/components/tg/TgVendorBrowser";
 import { TgVenueBrowserGate } from "@/components/venues-v2/VenueBrowserGates";
 import { TgCalendar } from "@/components/tg/TgCalendar";
 import { TgStickyAction } from "@/components/tg/TgStickyAction";
+import { TgPasswordSetup } from "@/components/tg/TgPasswordSetup";
 
 /**
  * Router for the Telegram Mini App.
@@ -32,6 +33,7 @@ export function TgPageRouter() {
   const pieces = logical.split("/").filter(Boolean);
   const queryKey = search.toString();
 
+  if (logical === "/" && search.get("setup") === "password") return <TgPasswordSetup />;
   if (logical === "/") return <TgHome />;
   if (logical === "/sign-in") return <TgSignIn />;
   if (logical === "/verify-otp") return <CustomerSignIn otp />;

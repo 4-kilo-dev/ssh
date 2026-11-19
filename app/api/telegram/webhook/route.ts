@@ -25,7 +25,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
     if (/^\/start(?:@\w+)?(?:\s|$)/.test(message.text || "")) {
-      await sendMiniAppWelcome(chatId);
+      const name = [message.from?.first_name, message.from?.last_name].filter(Boolean).join(" ");
+      await sendMiniAppWelcome(chatId, userId, name);
     } else if (message.contact?.user_id === userId && message.contact.phone_number) {
       const name = [message.from?.first_name, message.from?.last_name].filter(Boolean).join(" ");
       await setupTelegramPassword(chatId, userId, name, message.contact.phone_number);
