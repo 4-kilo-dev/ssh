@@ -187,3 +187,76 @@ export async function listVenues(filters: ListVenuesFilters = {}): Promise<Venue
 
   return await query;
 }
+
+/**
+ * Appends a photo URL to the venue's photos array.
+ * Caller must be the venue manager who owns the venue or super_admin.
+ */
+export async function addVenuePhoto(
+  venueId: string,
+  managerId: string,
+  photoUrl: string,
+  callerRole?: string
+): Promise<Venue> {
+  const venue = await getVenueById(venueId);
+  if (!venue) {
+    throw new Error("Venue not found");
+  }
+
+  if (venue.managerId !== managerId && callerRole !== "super_admin") {
+    throw new Error("Unauthorized: caller is not the owner of this venue");
+  }
+
+  const existingPhotos = Array.isArray(venue.photos) ? venue.photos : [];
+  if (existingPhotos.includes(photoUrl)) {
+    return venue;
+  }
+
+  const updatedPhotos = [...existingPhotos, photoUrl];
+  const db = getDb();
+  const [updated] = await db
+    .update(venues)
+    .set({
+      photos: updatedPhotos,
+      updatedAt: new Date(),
+    })
+    .where(eq(venues.id, venueId))
+    .returning();
+
+  return updated;
+}
+
+/**
+ * Removes a photo URL from the venue's photos array.
+ */
+export async function removeVenuePhoto(
+  venueId: string,
+  managerId: string,
+  photoUrl: string,
+  callerRole?: string
+): Promise<Venue> {
+  const venue = await getVenueById(venueId);
+  if (!venue) {
+    throw new Error("Venue not found");
+  }
+
+  if (venue.managerId !== managerId && callerRole !== "super_admin") {
+    throw new Error("Unauthorized: caller is not the owner of this venue");
+  }
+
+  const existingPhotos = Array.isArray(venue.photos) ? venue.photos : [];
+  const updatedPhotos = existingPhotos.filter((p) => p !== photoUrl);
+
+  const db = getDb();
+  const [updated] = await db
+    .update(venues)
+    .set({
+      photos: updatedPhotos,
+      updatedAt: new Date(),
+    })
+    .where(eq(venues.id, venueId))
+    .returning();
+
+  return updated;
+}
+

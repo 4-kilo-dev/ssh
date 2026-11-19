@@ -26,6 +26,9 @@ import {
   Send,
   Reply,
   ShieldCheck,
+  Image as ImageIcon,
+  Upload,
+  X,
 } from "lucide-react";
 
 interface Account {
@@ -46,6 +49,7 @@ interface Venue {
   contactEmail?: string | null;
   policies?: string | null;
   amenities?: string[] | null;
+  photos?: string[] | null;
 }
 
 interface Hall {
@@ -153,6 +157,23 @@ export default function ManagerVenuePage() {
   const [simSubject, setSimSubject] = useState("Audio & Catering Inquiry");
   const [simMessage, setSimMessage] = useState("Hello! Does the hall allow our live band and outside pastry service?");
   const [simSubmitting, setSimSubmitting] = useState(false);
+
+  // Venue Photos state
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoDeleting, setPhotoDeleting] = useState<string | null>(null);
+  const [photoPreset, setPhotoPreset] = useState("bellevue");
+  const [isUsingPreset, setIsUsingPreset] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview && photoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
 
   const loadHallSchedule = async (hallId: string, date: string) => {
     if (!venue) return;
@@ -395,6 +416,100 @@ export default function ManagerVenuePage() {
       await refreshData();
     } catch (err) {
       setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error deleting venue" });
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setIsUsingPreset(false);
+      const objectUrl = URL.createObjectURL(file);
+      setPhotoPreview(objectUrl);
+    } else {
+      setPhotoFile(null);
+      setPhotoPreview(null);
+    }
+  };
+
+  const handleUploadPhoto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venue) return;
+    if (!photoFile && !isUsingPreset) {
+      setStatusMessage({ type: "error", text: "Please select an image file to upload." });
+      return;
+    }
+
+    setPhotoUploading(true);
+    setStatusMessage(null);
+    try {
+      let res: Response;
+      if (isUsingPreset) {
+        res = await fetch(`/api/venues/${venue.id}/photos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preset: photoPreset }),
+        });
+      } else if (photoFile) {
+        const formData = new FormData();
+        formData.append("file", photoFile);
+        res = await fetch(`/api/venues/${venue.id}/photos`, {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to upload photo");
+      }
+
+      setStatusMessage({ type: "success", text: "Photo uploaded and attached to venue successfully!" });
+      setPhotoFile(null);
+      if (photoPreview && photoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(photoPreview);
+      }
+      setPhotoPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      if (data.photos) {
+        setVenue((prev) => (prev ? { ...prev, photos: data.photos } : prev));
+      }
+      await refreshData();
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error uploading photo" });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoUrl: string) => {
+    if (!venue) return;
+    if (!confirm("Are you sure you want to remove this photo?")) return;
+
+    setPhotoDeleting(photoUrl);
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/photos?photoUrl=${encodeURIComponent(photoUrl)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete photo");
+      }
+
+      setStatusMessage({ type: "success", text: "Photo removed successfully." });
+      if (data.photos) {
+        setVenue((prev) => (prev ? { ...prev, photos: data.photos } : prev));
+      }
+      await refreshData();
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error deleting photo" });
+    } finally {
+      setPhotoDeleting(null);
     }
   };
 
@@ -959,6 +1074,272 @@ export default function ManagerVenuePage() {
               </div>
               <span style={{ color: "var(--teal)", fontWeight: 700 }}>✓ Verified Owner</span>
             </div>
+          </div>
+
+          {/* Venue Photos Section */}
+          <div className="card" style={{ padding: "24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <ImageIcon size={20} style={{ color: "var(--teal)" }} />
+                  Venue Photos ({(venue.photos || []).length})
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--muted)" }}>
+                  Upload showcase photos for your venue. Photos are stored securely on your S3 MinIO storage.
+                </p>
+              </div>
+            </div>
+
+            {/* Current Photos Gallery */}
+            {!venue.photos || venue.photos.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px 16px",
+                  background: "var(--paper)",
+                  borderRadius: "10px",
+                  border: "1px dashed var(--line)",
+                  marginBottom: "24px",
+                }}
+              >
+                <ImageIcon size={28} style={{ color: "var(--muted)", margin: "0 auto 8px" }} />
+                <p style={{ margin: 0, fontWeight: 600 }}>No venue photos uploaded yet</p>
+                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--muted)" }}>
+                  Choose an image file below to upload your first venue photo.
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                  gap: "16px",
+                  marginBottom: "24px",
+                }}
+              >
+                {venue.photos.map((photoUrl, idx) => (
+                  <div
+                    key={`${photoUrl}-${idx}`}
+                    style={{
+                      position: "relative",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      border: idx === 0 ? "2px solid var(--teal)" : "1px solid var(--line)",
+                      background: "var(--paper)",
+                      aspectRatio: "4 / 3",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <img
+                      src={photoUrl}
+                      alt={`${venue.name} photo ${idx + 1}`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                    {idx === 0 && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: "8px",
+                          left: "8px",
+                          background: "rgba(13, 148, 136, 0.9)",
+                          color: "#fff",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          backdropFilter: "blur(4px)",
+                        }}
+                      >
+                        Cover Photo
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      title="Delete photo"
+                      onClick={() => handleDeletePhoto(photoUrl)}
+                      disabled={photoDeleting === photoUrl}
+                      style={{
+                        position: "absolute",
+                        top: "8px",
+                        right: "8px",
+                        background: "rgba(0, 0, 0, 0.65)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Photo Upload Form */}
+            <form
+              onSubmit={handleUploadPhoto}
+              style={{
+                padding: "16px",
+                background: "var(--paper)",
+                borderRadius: "10px",
+                border: "1px solid var(--line)",
+                display: "grid",
+                gap: "16px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 700 }}>
+                  {isUsingPreset ? "Upload Preset Photo" : "Upload New Image"}
+                </h4>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsUsingPreset(false)}
+                    className={`btn ${!isUsingPreset ? "btn-primary" : "btn-secondary"}`}
+                    style={{ fontSize: "12px", padding: "4px 10px" }}
+                  >
+                    File Picker
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUsingPreset(true);
+                      setPhotoFile(null);
+                      setPhotoPreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className={`btn ${isUsingPreset ? "btn-primary" : "btn-secondary"}`}
+                    style={{ fontSize: "12px", padding: "4px 10px" }}
+                  >
+                    Preset Sample
+                  </button>
+                </div>
+              </div>
+
+              {!isUsingPreset ? (
+                <div>
+                  <label
+                    htmlFor="venue-photo-file"
+                    style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}
+                  >
+                    Choose Image File (all image types supported)
+                  </label>
+                  <input
+                    id="venue-photo-file"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="field"
+                    style={{
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      background: "var(--bg)",
+                    }}
+                  />
+                  {photoPreview && (
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "10px",
+                        background: "var(--bg)",
+                        borderRadius: "8px",
+                        border: "1px solid var(--line)",
+                      }}
+                    >
+                      <img
+                        src={photoPreview}
+                        alt="Preview"
+                        style={{ width: "64px", height: "48px", objectFit: "cover", borderRadius: "6px" }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "13px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {photoFile?.name}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+                          {photoFile ? `${(photoFile.size / 1024).toFixed(1)} KB` : ""} • {photoFile?.type || "image"}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--muted)",
+                          padding: "4px",
+                        }}
+                        title="Remove selection"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="preset-select"
+                    style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}
+                  >
+                    Select Local Preset Asset
+                  </label>
+                  <select
+                    id="preset-select"
+                    className="field"
+                    value={photoPreset}
+                    onChange={(e) => setPhotoPreset(e.target.value)}
+                  >
+                    <option value="bellevue">Bellevue Hotel (public/images/bellevue.jpg)</option>
+                    <option value="golf">Golf Club (public/images/Golf.jpg)</option>
+                    <option value="vibeshotel">Vibes Hotel (public/images/vibeshotel.jpg)</option>
+                    <option value="landing">Landing Hero (public/images/landing.jpg)</option>
+                    <option value="landingtwo">Landing Two (public/images/landingtwo.jpg)</option>
+                    <option value="stayeasy">Stay Easy (public/images/stayeasy.jpg)</option>
+                    <option value="kaleb">Kaleb (public/images/kaleb.jpg)</option>
+                    <option value="gold">Gold (public/images/gold.jpg)</option>
+                    <option value="get">GET (public/images/get.jpg)</option>
+                    <option value="deo">DEO (public/images/deo.jpg)</option>
+                    <option value="eli">ELI (public/images/eli.jpg)</option>
+                    <option value="mon">MON (public/images/mon.jpg)</option>
+                    <option value="ras">RAS (public/images/ras.jpg)</option>
+                    <option value="sap">SAP (public/images/sap.jpg)</option>
+                  </select>
+                  <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--muted)" }}>
+                    Transfers the local test image into MinIO S3 object storage and attaches it to this venue.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={photoUploading || (!isUsingPreset && !photoFile)}
+                  style={{ fontSize: "13px" }}
+                >
+                  <Upload size={14} />
+                  {photoUploading
+                    ? "Uploading to S3..."
+                    : isUsingPreset
+                    ? "Upload Selected Preset"
+                    : "Upload Image to Venue"}
+                </button>
+              </div>
+            </form>
           </div>
 
           {/* Bookable Halls Section */}
