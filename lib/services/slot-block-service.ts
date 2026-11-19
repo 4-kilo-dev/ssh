@@ -9,6 +9,7 @@
 
 import { getHallById } from "./hall-service";
 import { getVenueById } from "./venue-service";
+import { checkVenueAccess } from "./venue-staff-service";
 import {
   createSlotClaim,
   releaseSlotClaim,
@@ -37,7 +38,8 @@ export async function createSlotBlock(input: CreateSlotBlockInput): Promise<Slot
   }
 
   const venue = await getVenueById(hall.venueId);
-  if (!venue || venue.managerId !== input.managerId) {
+  const access = venue ? await checkVenueAccess(venue.id, input.managerId, "manager") : { authorized: false };
+  if (!venue || !access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
@@ -89,7 +91,8 @@ export async function releaseSlotBlock(
   }
 
   const venue = await getVenueById(hall.venueId);
-  if (!venue || venue.managerId !== managerId) {
+  const access = venue ? await checkVenueAccess(venue.id, managerId, "manager") : { authorized: false };
+  if (!venue || !access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 

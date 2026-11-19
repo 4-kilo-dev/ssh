@@ -5,7 +5,7 @@ import {
   listBookingsByCustomer,
   listBookingsByVenue,
 } from "@/lib/services/booking-service";
-import { getVenueByManagerId } from "@/lib/services/venue-service";
+import { getVenueForAccount } from "@/lib/services/venue-service";
 import { attachBookingDetails } from "@/lib/services/list-details-service";
 
 export async function POST(req: Request) {
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 
   try {
     if (auth.account.role === "venue_manager") {
-      const venue = await getVenueByManagerId(auth.account.id);
+      const venue = await getVenueForAccount(auth.account.id);
       if (!venue) {
         return NextResponse.json([]);
       }

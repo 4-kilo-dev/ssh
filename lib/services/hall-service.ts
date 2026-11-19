@@ -12,6 +12,7 @@ import { eq, and, ne } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { halls, venues, type Hall, type HallSetting } from "../db/schema";
 import { getVenueById } from "./venue-service";
+import { checkVenueAccess } from "./venue-staff-service";
 
 export interface CreateHallInput {
   venueId: string;
@@ -48,7 +49,8 @@ export async function createHall(
     throw new Error("Venue not found");
   }
 
-  if (venue.managerId !== managerId) {
+  const access = await checkVenueAccess(venue.id, managerId, "manager");
+  if (!access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
@@ -120,7 +122,8 @@ export async function updateHall(
   }
 
   const venue = await getVenueById(hall.venueId);
-  if (!venue || venue.managerId !== managerId) {
+  const access = venue ? await checkVenueAccess(venue.id, managerId, "manager") : { authorized: false };
+  if (!venue || !access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
@@ -171,7 +174,8 @@ export async function deleteHall(hallId: string, managerId: string): Promise<voi
   }
 
   const venue = await getVenueById(hall.venueId);
-  if (!venue || venue.managerId !== managerId) {
+  const access = venue ? await checkVenueAccess(venue.id, managerId, "manager") : { authorized: false };
+  if (!venue || !access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 

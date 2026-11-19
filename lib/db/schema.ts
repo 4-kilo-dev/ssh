@@ -110,6 +110,40 @@ export const venues = pgTable("venues", {
 export type Venue = typeof venues.$inferSelect;
 export type NewVenue = typeof venues.$inferInsert;
 
+// Phase 3.5: Venue Member Role enum
+export const venueMemberRoleEnum = pgEnum("venue_member_role", [
+  "owner",
+  "manager",
+  "receptionist",
+]);
+
+export type VenueMemberRole = (typeof venueMemberRoleEnum.enumValues)[number];
+
+// Phase 3.5: Venue Members table — enables team/staff collaboration and decouples venue lifecycle from a single manager's phone
+export const venueMembers = pgTable(
+  "venue_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    venueId: uuid("venue_id")
+      .notNull()
+      .references(() => venues.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    role: venueMemberRoleEnum("role").notNull().default("manager"),
+    title: text("title"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("venue_members_venue_account_unique_idx").on(table.venueId, table.accountId),
+  ]
+);
+
+export type VenueMember = typeof venueMembers.$inferSelect;
+export type NewVenueMember = typeof venueMembers.$inferInsert;
+
 // Phase 3: Hall settings enum
 export const hallSettingEnum = pgEnum("hall_setting", [
   "indoor",

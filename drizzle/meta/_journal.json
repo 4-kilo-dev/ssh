@@ -71,6 +71,13 @@
       "when": 1794484328107,
       "tag": "0009_productive_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795097875493,
+      "tag": "0010_freezing_domino",
+      "breakpoints": true
     }
   ]
 }

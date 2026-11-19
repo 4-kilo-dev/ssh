@@ -25,6 +25,7 @@ import {
   type InquiryMessage,
 } from "../db/schema";
 import { getVenueById } from "./venue-service";
+import { checkVenueAccess, getVenueForAccount } from "./venue-staff-service";
 
 export interface CreateConversationInput {
   venueId: string;
@@ -125,7 +126,8 @@ export async function sendMessage(input: SendMessageInput): Promise<InquiryMessa
   }
 
   const isCustomer = conv.customerId === input.senderId;
-  const isManager = conv.managerId === input.senderId;
+  const access = await checkVenueAccess(conv.venueId, input.senderId, "receptionist");
+  const isManager = conv.managerId === input.senderId || access.authorized;
 
   if (!isCustomer && !isManager) {
     throw new Error("Not authorized: Only conversation participants can send messages");
@@ -175,7 +177,8 @@ export async function getConversationById(input: GetConversationInput): Promise<
     .limit(1);
 
   const isCustomer = conv.customerId === input.callerId;
-  const isManager = conv.managerId === input.callerId;
+  const access = await checkVenueAccess(conv.venueId, input.callerId, "receptionist");
+  const isManager = conv.managerId === input.callerId || access.authorized;
   const isAdmin = caller?.role === "super_admin";
 
   if (!isCustomer && !isManager && !isAdmin) {
@@ -203,8 +206,20 @@ export async function getConversationMessages(input: GetConversationMessagesInpu
     throw new Error("Conversation not found");
   }
 
+  const [caller] = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.id, input.callerId))
+    .limit(1);
+
+  // PRIVACY INVARIANT: Super admin cannot inspect private conversation messages
+  if (caller?.role === "super_admin" && conv.customerId !== input.callerId && conv.managerId !== input.callerId) {
+    throw new Error("Forbidden: Private message contents are excluded from super admin inspection");
+  }
+
   const isCustomer = conv.customerId === input.callerId;
-  const isManager = conv.managerId === input.callerId;
+  const access = await checkVenueAccess(conv.venueId, input.callerId, "receptionist", false);
+  const isManager = conv.managerId === input.callerId || access.authorized;
 
   if (!isCustomer && !isManager) {
     throw new Error("Not authorized: Private message contents are restricted to conversation participants");
@@ -237,10 +252,18 @@ export async function listConversationsForAccount(accountId: string): Promise<In
   }
 
   if (account.role === "venue_manager") {
+    const venue = await getVenueForAccount(accountId);
+    if (!venue) {
+      return await db
+        .select()
+        .from(inquiryConversations)
+        .where(eq(inquiryConversations.managerId, accountId))
+        .orderBy(desc(inquiryConversations.updatedAt));
+    }
     return await db
       .select()
       .from(inquiryConversations)
-      .where(eq(inquiryConversations.managerId, accountId))
+      .where(or(eq(inquiryConversations.managerId, accountId), eq(inquiryConversations.venueId, venue.id)))
       .orderBy(desc(inquiryConversations.updatedAt));
   }
 

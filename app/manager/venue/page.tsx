@@ -29,6 +29,9 @@ import {
   Image as ImageIcon,
   Upload,
   X,
+  UserPlus,
+  ArrowLeftRight,
+  UserX,
 } from "lucide-react";
 
 interface Account {
@@ -36,6 +39,19 @@ interface Account {
   name: string;
   phone: string;
   role: string;
+}
+
+interface StaffMember {
+  id: string;
+  venueId: string;
+  accountId: string;
+  name: string;
+  phone: string;
+  role: "owner" | "manager" | "receptionist";
+  title: string | null;
+  isActive: boolean;
+  isPrimaryOwner: boolean;
+  createdAt: string;
 }
 
 interface Venue {
@@ -167,6 +183,17 @@ export default function ManagerVenuePage() {
   const [isUsingPreset, setIsUsingPreset] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Staff & Team Management state (Phase 3.5)
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [newStaffPhone, setNewStaffPhone] = useState("");
+  const [newStaffName, setNewStaffName] = useState("");
+  const [newStaffRole, setNewStaffRole] = useState<"owner" | "manager" | "receptionist">("manager");
+  const [newStaffTitle, setNewStaffTitle] = useState("");
+  const [staffSubmitting, setStaffSubmitting] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferPhone, setTransferPhone] = useState("");
+  const [transferring, setTransferring] = useState(false);
+
   useEffect(() => {
     return () => {
       if (photoPreview && photoPreview.startsWith("blob:")) {
@@ -219,22 +246,43 @@ export default function ManagerVenuePage() {
       setAccount(meData.account);
 
       if (meData.account?.role === "venue_manager") {
-        // Find existing venue for this manager
-        const listRes = await fetch("/api/venues");
-        if (listRes.ok) {
-          const { venues } = await listRes.json();
-          const myVenue = venues.find((v: Venue) => v.managerId === meData.account.id);
-          if (myVenue) {
-            setVenue(myVenue);
-            // Fetch halls for this venue
-            const hallsRes = await fetch(`/api/venues/${myVenue.id}/halls`);
-            if (hallsRes.ok) {
-              const hallsData = await hallsRes.json();
-              setHalls(hallsData.halls || []);
-              if (hallsData.halls?.length > 0 && testSelectedHalls.length === 0) {
-                setTestSelectedHalls([hallsData.halls[0].id]);
-              }
+        // Find existing venue for this manager (either primary owner or invited staff member)
+        const managedRes = await fetch("/api/venues/managed");
+        let myVenue: Venue | null = null;
+        if (managedRes.ok) {
+          const managedData = await managedRes.json();
+          myVenue = managedData.venue || null;
+          if (managedData.staff) {
+            setStaffList(managedData.staff);
+          }
+        }
+
+        if (!myVenue) {
+          const listRes = await fetch("/api/venues");
+          if (listRes.ok) {
+            const { venues } = await listRes.json();
+            myVenue = venues.find((v: Venue) => v.managerId === meData.account.id) || null;
+          }
+        }
+
+        if (myVenue) {
+          setVenue(myVenue);
+          // Fetch staff list if not already loaded
+          const staffRes = await fetch(`/api/venues/${myVenue.id}/staff`);
+          if (staffRes.ok) {
+            const staffData = await staffRes.json();
+            setStaffList(staffData.staff || []);
+          }
+
+          // Fetch halls for this venue
+          const hallsRes = await fetch(`/api/venues/${myVenue.id}/halls`);
+          if (hallsRes.ok) {
+            const hallsData = await hallsRes.json();
+            setHalls(hallsData.halls || []);
+            if (hallsData.halls?.length > 0 && testSelectedHalls.length === 0) {
+              setTestSelectedHalls([hallsData.halls[0].id]);
             }
+          }
 
             // Fetch bookings for this venue
             const bookingsRes = await fetch("/api/bookings");
@@ -266,8 +314,7 @@ export default function ManagerVenuePage() {
             setInquiryMessages([]);
           }
         }
-      }
-    } catch (err) {
+      } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
@@ -510,6 +557,131 @@ export default function ManagerVenuePage() {
       setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error deleting photo" });
     } finally {
       setPhotoDeleting(null);
+    }
+  };
+
+  const handleAddStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venue || !newStaffPhone) return;
+    setStaffSubmitting(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/staff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: newStaffPhone,
+          name: newStaffName || "Staff Member",
+          role: newStaffRole,
+          title: newStaffTitle || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to add staff member");
+      }
+      setStatusMessage({
+        type: "success",
+        text: `Staff member ${data.member.name} (${data.member.phone}) added successfully as ${data.member.role}!`,
+      });
+      setNewStaffPhone("");
+      setNewStaffName("");
+      setNewStaffTitle("");
+      await refreshData();
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error adding staff member" });
+    } finally {
+      setStaffSubmitting(false);
+    }
+  };
+
+  const handleToggleStaffStatus = async (staffAccountId: string, currentActive: boolean) => {
+    if (!venue) return;
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/staff`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffAccountId,
+          isActive: !currentActive,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update staff status");
+      }
+      setStatusMessage({
+        type: "success",
+        text: `Staff status updated to ${!currentActive ? "Active" : "Deactivated"}.`,
+      });
+      await refreshData();
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error updating staff" });
+    }
+  };
+
+  const handleRemoveStaff = async (staffAccountId: string, staffName: string) => {
+    if (!venue) return;
+    if (
+      !confirm(
+        `Are you sure you want to remove '${staffName}' from this venue? They will no longer have access to manage bookings or halls.`
+      )
+    )
+      return;
+
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/staff?staffAccountId=${staffAccountId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to remove staff member");
+      }
+      setStatusMessage({
+        type: "success",
+        text: `Staff member '${staffName}' removed successfully. Venue and bookings are preserved.`,
+      });
+      await refreshData();
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error removing staff" });
+    }
+  };
+
+  const handleTransferOwnership = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venue || !transferPhone) return;
+    if (
+      !confirm(
+        `Are you sure you want to transfer PRIMARY OWNERSHIP of '${venue.name}' to ${transferPhone}? You will remain on the team as an active manager.`
+      )
+    )
+      return;
+
+    setTransferring(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newOwnerPhoneOrId: transferPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to transfer venue ownership");
+      }
+      setStatusMessage({
+        type: "success",
+        text: `Primary ownership of '${venue.name}' successfully transferred to ${transferPhone}!`,
+      });
+      setShowTransferModal(false);
+      setTransferPhone("");
+      await refreshData();
+    } catch (err) {
+      setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error transferring ownership" });
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -1337,6 +1509,308 @@ export default function ManagerVenuePage() {
                     : isUsingPreset
                     ? "Upload Selected Preset"
                     : "Upload Image to Venue"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Venue Staff & Team Collaboration Section */}
+          <div className="card" style={{ padding: "24px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: "20px",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Users size={20} style={{ color: "var(--teal)" }} />
+                  Team & Staff Management ({staffList.length})
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--muted)" }}>
+                  Manage who has access to this venue. If an employee leaves, deactivate or remove them here — the venue
+                  and all bookings remain safe.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTransferModal(!showTransferModal)}
+                className="btn btn-secondary"
+                style={{ fontSize: "13px" }}
+              >
+                <ArrowLeftRight size={14} />
+                Transfer Primary Ownership
+              </button>
+            </div>
+
+            {/* Transfer Ownership Collapsible Form */}
+            {showTransferModal && (
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#fffbeb",
+                  border: "1px solid #fef3c7",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                }}
+              >
+                <h4 style={{ margin: "0 0 6px", fontSize: "14px", color: "#92400e" }}>
+                  Transfer Primary Venue Ownership
+                </h4>
+                <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#b45309" }}>
+                  Enter the phone number of the successor manager. They will become the primary owner; you will remain
+                  on the team as an active manager.
+                </p>
+                <form onSubmit={handleTransferOwnership} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    className="field"
+                    style={{ flex: 1, padding: "8px 12px", fontSize: "13px" }}
+                    placeholder="e.g. 0911223344 or +251911223344"
+                    value={transferPhone}
+                    onChange={(e) => setTransferPhone(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={transferring || !transferPhone}
+                    style={{ fontSize: "13px" }}
+                  >
+                    {transferring ? "Transferring..." : "Confirm Transfer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTransferModal(false);
+                      setTransferPhone("");
+                    }}
+                    className="btn btn-secondary"
+                    style={{ fontSize: "13px" }}
+                  >
+                    Cancel
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Staff Members List */}
+            <div style={{ display: "grid", gap: "10px", marginBottom: "24px" }}>
+              {staffList.map((member) => (
+                <div
+                  key={member.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 16px",
+                    background: member.isActive ? "var(--paper)" : "#f9fafb",
+                    border: "1px solid var(--line)",
+                    borderRadius: "8px",
+                    opacity: member.isActive ? 1 : 0.6,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        background:
+                          member.role === "owner"
+                            ? "#fef3c7"
+                            : member.role === "manager"
+                            ? "var(--teal-soft)"
+                            : "#e0f2fe",
+                        color: member.role === "owner" ? "#b45309" : member.role === "manager" ? "var(--teal)" : "#0284c7",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                      }}
+                    >
+                      {member.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 600, fontSize: "14px" }}>{member.name}</span>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            padding: "1px 6px",
+                            borderRadius: "4px",
+                            background:
+                              member.role === "owner"
+                                ? "#fef3c7"
+                                : member.role === "manager"
+                                ? "var(--teal-soft)"
+                                : "#e0f2fe",
+                            color:
+                              member.role === "owner" ? "#b45309" : member.role === "manager" ? "var(--teal)" : "#0284c7",
+                          }}
+                        >
+                          {member.role}
+                        </span>
+                        {member.isPrimaryOwner && (
+                          <span style={{ fontSize: "11px", color: "var(--teal)", fontWeight: 700 }}>
+                            ★ Primary Owner
+                          </span>
+                        )}
+                        {!member.isActive && (
+                          <span style={{ fontSize: "11px", color: "#dc2626", fontWeight: 700 }}>
+                            (Deactivated)
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "2px" }}>
+                        {member.phone} {member.title ? `• ${member.title}` : ""}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Member Actions */}
+                  {!member.isPrimaryOwner && (
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStaffStatus(member.accountId, member.isActive)}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "12px", padding: "4px 8px" }}
+                      >
+                        {member.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStaff(member.accountId, member.name)}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "12px", padding: "4px 8px", color: "#dc2626", borderColor: "#fecaca" }}
+                        title="Remove staff member from venue"
+                      >
+                        <UserX size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add Staff Member Form */}
+            <form
+              onSubmit={handleAddStaff}
+              style={{
+                padding: "16px",
+                background: "var(--paper)",
+                borderRadius: "10px",
+                border: "1px solid var(--line)",
+                display: "grid",
+                gap: "12px",
+              }}
+            >
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <UserPlus size={16} />
+                Add New Team Member
+              </h4>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <label
+                    htmlFor="staff-name"
+                    style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="staff-name"
+                    type="text"
+                    className="field"
+                    placeholder="e.g. Almaz Bekele"
+                    value={newStaffName}
+                    onChange={(e) => setNewStaffName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="staff-phone"
+                    style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}
+                  >
+                    Mobile Phone Number
+                  </label>
+                  <input
+                    id="staff-phone"
+                    type="tel"
+                    className="field"
+                    placeholder="e.g. 0911223344"
+                    value={newStaffPhone}
+                    onChange={(e) => setNewStaffPhone(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="staff-role"
+                    style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}
+                  >
+                    Permission Role
+                  </label>
+                  <select
+                    id="staff-role"
+                    className="field"
+                    value={newStaffRole}
+                    onChange={(e) => setNewStaffRole(e.target.value as any)}
+                  >
+                    <option value="manager">Manager (Manage halls, bookings, blocks, photos)</option>
+                    <option value="receptionist">Receptionist (View calendar, view reservations)</option>
+                    <option value="owner">Co-Owner (Full administrative access)</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="staff-title"
+                    style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}
+                  >
+                    Job Title (Optional)
+                  </label>
+                  <input
+                    id="staff-title"
+                    type="text"
+                    className="field"
+                    placeholder="e.g. Event Sales Coordinator"
+                    value={newStaffTitle}
+                    onChange={(e) => setNewStaffTitle(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={staffSubmitting || !newStaffPhone}
+                  style={{ fontSize: "13px" }}
+                >
+                  <UserPlus size={14} />
+                  {staffSubmitting ? "Adding Staff..." : "Add Team Member"}
                 </button>
               </div>
             </form>

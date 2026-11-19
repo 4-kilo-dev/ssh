@@ -10,8 +10,11 @@
 
 import { eq, and, or, ilike } from "drizzle-orm";
 import { getDb } from "../db/client";
-import { venues, accounts, type Venue, type NewVenue } from "../db/schema";
+import { venues, accounts, venueMembers, type Venue, type NewVenue } from "../db/schema";
 import { getAccountById } from "./account-service";
+import { checkVenueAccess, getVenueForAccount } from "./venue-staff-service";
+
+export { getVenueForAccount };
 
 export interface CreateVenueInput {
   managerId: string;
@@ -83,6 +86,18 @@ export async function createVenue(input: CreateVenueInput): Promise<Venue> {
     })
     .returning();
 
+  // Automatically register creator as venue owner in venue_members
+  await db
+    .insert(venueMembers)
+    .values({
+      venueId: created.id,
+      accountId: input.managerId,
+      role: "owner",
+      title: "Primary Owner",
+      isActive: true,
+    })
+    .onConflictDoNothing();
+
   return created;
 }
 
@@ -118,7 +133,8 @@ export async function updateVenue(
     throw new Error("Venue not found");
   }
 
-  if (venue.managerId !== managerId) {
+  const access = await checkVenueAccess(venueId, managerId, "manager");
+  if (!access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
@@ -137,7 +153,7 @@ export async function updateVenue(
 
 /**
  * Deletes a venue.
- * Enforces ownership boundary: caller `managerId` must match the venue's `managerId`.
+ * Enforces ownership boundary: caller must be owner in venue_members or primary manager.
  * Database cascade will delete associated halls automatically.
  */
 export async function deleteVenue(venueId: string, managerId: string): Promise<void> {
@@ -146,7 +162,8 @@ export async function deleteVenue(venueId: string, managerId: string): Promise<v
     throw new Error("Venue not found");
   }
 
-  if (venue.managerId !== managerId) {
+  const access = await checkVenueAccess(venueId, managerId, "owner");
+  if (!access.authorized) {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
@@ -203,7 +220,8 @@ export async function addVenuePhoto(
     throw new Error("Venue not found");
   }
 
-  if (venue.managerId !== managerId && callerRole !== "super_admin") {
+  const access = await checkVenueAccess(venueId, managerId, "manager");
+  if (!access.authorized && callerRole !== "super_admin") {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 
@@ -240,7 +258,8 @@ export async function removeVenuePhoto(
     throw new Error("Venue not found");
   }
 
-  if (venue.managerId !== managerId && callerRole !== "super_admin") {
+  const access = await checkVenueAccess(venueId, managerId, "manager");
+  if (!access.authorized && callerRole !== "super_admin") {
     throw new Error("Unauthorized: caller is not the owner of this venue");
   }
 

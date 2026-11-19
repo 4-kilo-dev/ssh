@@ -29,6 +29,7 @@ import {
   type BookingHall,
 } from "../db/schema";
 import { getVenueById } from "./venue-service";
+import { checkVenueAccess } from "./venue-staff-service";
 import { logAuditEvent } from "./audit-service";
 
 export interface BookingWithHalls extends Booking {
@@ -282,7 +283,8 @@ export async function confirmBooking(input: ConfirmBookingInput): Promise<Bookin
     throw new Error("Venue not found");
   }
 
-  if (venue.managerId !== input.callerId) {
+  const access = await checkVenueAccess(venue.id, input.callerId, "manager");
+  if (!access.authorized) {
     throw new Error("Not authorized: Only the owner manager of this venue can confirm bookings");
   }
 
@@ -336,7 +338,8 @@ export async function cancelBooking(input: CancelBookingInput): Promise<BookingW
   }
 
   const isCustomer = booking.customerId === input.callerId;
-  const isManager = venue.managerId === input.callerId;
+  const access = await checkVenueAccess(venue.id, input.callerId, "manager");
+  const isManager = access.authorized;
 
   if (!isCustomer && !isManager) {
     throw new Error("Not authorized: You cannot cancel this booking");
