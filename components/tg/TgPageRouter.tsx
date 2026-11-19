@@ -35,7 +35,7 @@ export function TgPageRouter() {
 
   if (logical === "/" && search.get("setup") === "password") return <TgPasswordSetup />;
   if (logical === "/") return <TgHome />;
-  if (logical === "/sign-in") return <TgSignIn />;
+  if (logical === "/sign-in" || logical === "/login") return <TgSignIn />;
   if (logical === "/verify-otp") return <CustomerSignIn otp />;
   if (logical === "/profile/setup") return <CustomerProfileSetup />;
 

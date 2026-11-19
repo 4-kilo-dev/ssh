@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Bell } from "lucide-react";
 import { Link, useRouter } from "@/lib/nav";
@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
 import { getTelegramInitData, initTelegram, isTelegramMiniApp, setTelegramBackButton } from "@/lib/telegram";
 import { TgBottomNav } from "@/components/tg/TgBottomNav";
+import { TgSignIn } from "@/components/tg/TgSignIn";
 
 const rootTabs = ["/", "/venues", "/vendors", "/my-event", "/profile"];
 
@@ -21,6 +22,8 @@ export function TgShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
+  const [telegramMode, setTelegramMode] = useState<boolean | null>(null);
+  const [authState, setAuthState] = useState<"loading" | "authenticated" | "needs_password" | "unauthenticated">("loading");
   const brand = t("brand", locale);
   const logical = pathname.replace(/^\/tg(?=\/|$)/, "") || "/";
   const atRootTab = rootTabs.includes(logical);
@@ -28,9 +31,12 @@ export function TgShell({ children }: { children: React.ReactNode }) {
   // Boot telegram-web-app.js (no-op in a normal browser).
   useEffect(() => { initTelegram(); }, []);
   useEffect(() => {
-    if (!isTelegramMiniApp()) return;
+    const inTelegram = isTelegramMiniApp();
+    setTelegramMode(inTelegram);
+    if (!inTelegram) { setAuthState("authenticated"); return; }
     const hydrate = (account: { account?: { id: string; name: string; phone?: string; role: string; telegramId?: string | null }; status?: string } | null) => {
       if (!account?.account || account.status !== "authenticated") return;
+      setAuthState("authenticated");
       const authenticated = account.account;
       return Promise.all([
         fetch("/api/venues").then((response) => response.ok ? response.json() : { venues: [] }),
@@ -40,12 +46,12 @@ export function TgShell({ children }: { children: React.ReactNode }) {
     fetch("/api/auth/me").then(async (response) => {
       if (response.ok) return response.json();
       const initData = getTelegramInitData();
-      if (!initData) return null;
+      if (!initData) { setAuthState("unauthenticated"); return null; }
       const authResponse = await fetch("/api/auth/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData }) });
       const auth = await authResponse.json();
-      if (auth.needsPassword && search.get("setup") !== "password") router.replace("/?setup=password");
+      if (auth.needsPassword) { setAuthState("needs_password"); if (search.get("setup") !== "password") router.replace("/?setup=password"); }
       return auth.status === "ok" ? auth : null;
-    }).then(hydrate).catch(() => {});
+    }).then((account) => { if (account?.status === "authenticated") hydrate(account); else if (authState === "loading" && search.get("setup") !== "password") setAuthState("unauthenticated"); }).catch(() => setAuthState("unauthenticated"));
   // This runs once when the Telegram shell mounts; hydrateFromServer only uses setState.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -91,7 +97,7 @@ export function TgShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </header>
-    <main className="tg-main" tabIndex={-1}>{children}</main>
+    <main className="tg-main" tabIndex={-1}>{telegramMode === null || authState === "loading" ? <p className="muted">Connecting to Addis Gathering…</p> : telegramMode && authState === "unauthenticated" ? <TgSignIn /> : children}</main>
     <TgBottomNav />
   </div>;
 }
