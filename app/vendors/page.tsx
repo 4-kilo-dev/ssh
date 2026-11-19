@@ -60,6 +60,7 @@ export default function VendorsDirectoryPage() {
   const [selectedArea, setSelectedArea] = useState<string>("all");
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [expandedVendorId, setExpandedVendorId] = useState<string | null>(null);
 
   // Vendor owner profile form
   const [myVendor, setMyVendor] = useState<VendorItem | null>(null);
@@ -421,6 +422,7 @@ export default function VendorsDirectoryPage() {
           <div className="venue-grid vendor-market-grid">
             {filteredVendors.map((vendor, index) => {
               const isBoosted = vendor.boostStatus === "boosted";
+              const isExpanded = expandedVendorId === vendor.id;
 
               return (
                 <article
@@ -489,7 +491,7 @@ export default function VendorsDirectoryPage() {
                       <span>· {vendor.area || "Addis Ababa"}</span>
                     </div>
 
-                    <p className="muted line-clamp-3" style={{ marginBottom: "0.9rem" }}>
+                    <p className={`muted ${isExpanded ? "" : "line-clamp-2"}`} style={{ marginBottom: "0.75rem" }}>
                       {vendor.description || "Trusted service provider for weddings and corporate gatherings."}
                     </p>
 
@@ -511,25 +513,31 @@ export default function VendorsDirectoryPage() {
                       </span>
                     </div>
 
-                  {/* Contact Strip */}
-                  <div style={{ borderTop: "1px dashed var(--line)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--muted, #64748b)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                        <Phone size={13} />
-                        <span>{vendor.phone || "+251911..."}</span>
-                      </div>
-                      {vendor.email && (
+                  {isExpanded && (
+                    <div style={{ borderTop: "1px dashed var(--line)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "0.65rem", alignItems: "center", fontSize: "0.8rem", color: "var(--muted, #64748b)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                          <Mail size={13} />
-                          <span>{vendor.email}</span>
+                          <Phone size={13} />
+                          <span>{vendor.phone || "+251911..."}</span>
                         </div>
-                      )}
+                        {vendor.email && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <Mail size={13} />
+                            <span>{vendor.email}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <Link className="btn btn-primary full-width venue-card-cta" href={`/vendors/${vendor.id}`}>
-                    View details <ArrowRight size={15} aria-hidden="true" />
-                  </Link>
+                  <button
+                    type="button"
+                    className="btn btn-primary full-width venue-card-cta"
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpandedVendorId(isExpanded ? null : vendor.id)}
+                  >
+                    {isExpanded ? "Hide details" : "View details"} <ArrowRight size={15} aria-hidden="true" />
+                  </button>
                 </div>
                 </article>
               );
