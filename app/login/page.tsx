@@ -13,26 +13,50 @@ interface Account {
   telegramId?: string | null;
 }
 
+function getRoleRedirectPath(role?: string): string {
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+    if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
+      return redirect;
+    }
+  }
+
+  switch (role) {
+    case "super_admin":
+      return "/admin";
+    case "venue_manager":
+      return "/manager/venue";
+    case "vendor":
+      return "/vendors";
+    case "user":
+    default:
+      return "/venues";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState("+251911223344");
+  const [phone, setPhone] = useState("+251911000000");
   const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
 
-  // Check existing session on load
+  // Check existing session on load — automatically redirect to respective homepage
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.status === "authenticated" && data.account) {
           setAccount(data.account);
+          const target = getRoleRedirectPath(data.account.role);
+          router.replace(target);
         }
       })
       .catch(() => {});
-  }, []);
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,10 +78,9 @@ export default function LoginPage() {
       setAccount(data.account);
       setPassword("");
 
-      // Automatically route to workspace if venue manager
-      if (data.account?.role === "venue_manager") {
-        router.push("/manager/venue");
-      }
+      // Automatically route to their respective homepage by role
+      const target = getRoleRedirectPath(data.account?.role);
+      router.push(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to log in");
     } finally {
@@ -81,94 +104,29 @@ export default function LoginPage() {
           <Lock size={14} aria-hidden="true" />
           <span>Account Authentication</span>
         </p>
-        <h1>{account ? "Your Account" : "Sign In"}</h1>
+        <h1>{account ? "Redirecting..." : "Sign In"}</h1>
         <p>
           {account
-            ? "You currently have an active server-verified session."
+            ? "Redirecting you to your homepage..."
             : "Sign in with your phone number and password to manage bookings and venues."}
         </p>
       </header>
 
       {account ? (
-        <div className="card form-card">
-          <div
-            className="inline-notice"
-            style={{
-              borderColor: "var(--teal)",
-              borderLeftColor: "var(--teal)",
-              background: "var(--teal-soft)",
-              color: "var(--teal-dark)",
-            }}
-          >
-            <UserCheck size={20} aria-hidden="true" style={{ marginTop: "2px", flexShrink: 0 }} />
-            <div>
-              <strong>Authenticated Session</strong>
-              <p style={{ color: "var(--ink)", marginTop: "4px" }}>
-                Logged in as <strong>{account.name}</strong> ({account.phone}).
-              </p>
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "16px",
-              background: "var(--paper)",
-              borderRadius: "10px",
-              border: "1px solid var(--line)",
-            }}
-          >
-            <dl style={{ display: "grid", gap: "10px", margin: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <dt className="muted">Name</dt>
-                <dd style={{ margin: 0, fontWeight: 600 }}>{account.name}</dd>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <dt className="muted">Phone</dt>
-                <dd style={{ margin: 0, fontFamily: "monospace" }}>{account.phone}</dd>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <dt className="muted">Role</dt>
-                <dd style={{ margin: 0 }}>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "2px 8px",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      background: "var(--teal-soft)",
-                      color: "var(--teal)",
-                    }}
-                  >
-                    {account.role}
-                  </span>
-                </dd>
-              </div>
-              {account.telegramId && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <dt className="muted">Telegram ID</dt>
-                  <dd style={{ margin: 0, fontFamily: "monospace" }}>{account.telegramId}</dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          <div className="form-actions" style={{ marginTop: "24px" }}>
+        <div className="card form-card" style={{ textAlign: "center", padding: "32px" }}>
+          <UserCheck size={36} style={{ color: "var(--teal)", margin: "0 auto 16px" }} />
+          <h2 style={{ fontSize: "18px", margin: "0 0 8px" }}>Redirecting to your homepage...</h2>
+          <p style={{ color: "var(--muted)", margin: "0 0 20px", fontSize: "14px" }}>
+            Signed in as <strong>{account.name}</strong> ({account.role}).
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+            <Link href={getRoleRedirectPath(account.role)} className="btn btn-primary">
+              Continue to {account.role === "super_admin" ? "Admin Dashboard" : account.role === "venue_manager" ? "Venue Workspace" : account.role === "vendor" ? "Vendors Directory" : "Venues"} &rarr;
+            </Link>
             <button type="button" onClick={handleLogout} className="btn btn-secondary">
               <LogOut size={16} aria-hidden="true" />
               Sign Out
             </button>
-            {account.role === "venue_manager" ? (
-              <Link href="/manager/venue" className="btn btn-primary">
-                Venue Workspace <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            ) : (
-              <Link href="/" className="btn btn-primary">
-                Return Home <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            )}
           </div>
         </div>
       ) : (
