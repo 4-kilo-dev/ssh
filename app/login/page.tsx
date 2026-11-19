@@ -65,25 +65,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickDemoManager = async (preset: "A" | "B") => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/auth/demo-manager", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ managerId: preset }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed demo login");
-      router.push("/manager/venue");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed demo login");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -111,7 +92,7 @@ export default function LoginPage() {
       {account ? (
         <div className="card form-card">
           <div
-            className="demo-notice"
+            className="inline-notice"
             style={{
               borderColor: "var(--teal)",
               borderLeftColor: "var(--teal)",
@@ -263,29 +244,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div
-            style={{
-              marginTop: "16px",
-              padding: "12px",
-              background: "var(--paper)",
-              borderRadius: "8px",
-              border: "1px solid var(--line)",
-              fontSize: "12px",
-            }}
-          >
-            <strong>Test Credentials:</strong> Phone: <code>+251911223344</code> / Password: <code>password123</code>
-          </div>
-
           <div className="form-actions" style={{ marginTop: "24px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoManager("A")}
-              className="btn btn-secondary"
-              disabled={loading}
-              style={{ fontSize: "12px" }}
-            >
-              1-Click Demo Manager Login
-            </button>
             <button
               type="submit"
               className="btn btn-primary"

@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { useDemo } from "@/lib/store";
 import { t } from "@/lib/i18n";
-import { DemoControls } from "@/components/DemoControls";
 import { LandingPage } from "@/components/LandingPage";
 import { BookingRequestForm, BookingSubmitted, MyEventDashboard, PaymentScreen, VenueBrowser, VenueDetails } from "@/components/CoreFlow";
 import { VenueBrowserGate } from "@/components/venues-v2/VenueBrowserGates";
@@ -17,12 +16,22 @@ import { VendorApplicationForm, VendorApplicationStatus, VendorListingEditor, Ve
 
 export function PageRouter() {
   const pathname = usePathname();
-  const { role, locale, hydrateFromServer } = useDemo();
+  const { role, locale, hydrateFromServer, hydrateCatalogFromServer } = useDemo();
   const pieces = pathname.split("/").filter(Boolean);
   const customerOnly = ["/my-event", "/my-bookings", "/my-inquiries", "/my-payments", "/saved", "/profile", "/settings", "/payments", "/inquiries", "/bookings"].some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const [authState, setAuthState] = useState<"checking" | "authenticated" | "unauthenticated">("checking");
   useEffect(() => {
-    if (!customerOnly) { setAuthState("authenticated"); return; }
+    if (!customerOnly) {
+      setAuthState("authenticated");
+      if (["/", "/venues", "/vendors"].includes(pathname)) {
+        Promise.all([fetch("/api/venues"), fetch("/api/vendors?limit=100")]).then(async ([venueResponse, vendorResponse]) => {
+          const venueData = venueResponse.ok ? await venueResponse.json() : { venues: [] };
+          const vendorData = vendorResponse.ok ? await vendorResponse.json() : { vendors: [] };
+          hydrateCatalogFromServer({ venues: venueData.venues || [], vendors: vendorData.vendors || [] });
+        }).catch(() => hydrateCatalogFromServer({ venues: [], vendors: [] }));
+      }
+      return;
+    }
     fetch("/api/auth/me").then(async (response) => {
       if (!response.ok) { setAuthState("unauthenticated"); return; }
       const account = await response.json();
@@ -39,9 +48,8 @@ export function PageRouter() {
   if (customerOnly && authState === "checking") return <section className="card"><h1>Connecting your account…</h1><p>Loading your backend account and customer data.</p></section>;
   if (customerOnly && authState === "unauthenticated") return <section className="card access-denied"><LockKeyhole size={27} aria-hidden="true" /><h1>Sign in required</h1><p>Sign in to view your bookings, inquiries, payments, and profile.</p><Link className="btn btn-primary" href="/login">Sign in <ArrowRight size={16} aria-hidden="true" /></Link></section>;
   const forbidden = (pathname.startsWith("/admin") && role !== "admin" && pathname !== "/admin/login") || (pathname.startsWith("/vendor") && role !== "vendor" && pathname !== "/vendor/sign-in" && pathname !== "/vendor/apply") || (customerOnly && role !== "customer");
-  if (forbidden) return <section className="card access-denied"><LockKeyhole size={27} aria-hidden="true" /><h1>{t("accessDenied", locale)}</h1><p>{t("accessNotice", locale)}</p><Link className="btn btn-primary" href="/demo">{t("demoMenu", locale)} <ArrowRight size={16} aria-hidden="true" /></Link></section>;
+  if (forbidden) return <section className="card access-denied"><LockKeyhole size={27} aria-hidden="true" /><h1>{t("accessDenied", locale)}</h1><p>You do not have permission to view this page.</p><Link className="btn btn-primary" href="/">{t("backHome", locale)} <ArrowRight size={16} aria-hidden="true" /></Link></section>;
   if (pathname === "/") return <LandingPage />;
-  if (pathname === "/demo") return <DemoControls />;
   if (pathname === "/vendor/sign-in") return <VendorSignInPreview />;
   if (pathname === "/vendor/apply") return <VendorApplicationForm />;
   if (pathname === "/vendor/application") return <VendorApplicationStatus />;

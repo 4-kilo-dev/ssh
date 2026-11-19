@@ -36,12 +36,15 @@ export function TgShell({ children }: { children: React.ReactNode }) {
     if (!inTelegram) { setAuthState("authenticated"); return; }
     const hydrate = (account: { account?: { id: string; name: string; phone?: string; role: string; telegramId?: string | null }; status?: string } | null) => {
       if (!account?.account || account.status !== "authenticated") return;
-      setAuthState("authenticated");
       const authenticated = account.account;
       return Promise.all([
         fetch("/api/venues").then((response) => response.ok ? response.json() : { venues: [] }),
+        fetch("/api/vendors?limit=100").then((response) => response.ok ? response.json() : { vendors: [] }),
         fetch("/api/bookings").then((response) => response.ok ? response.json() : []),
-      ]).then(([venueData, bookings]) => hydrateFromServer({ account: authenticated, venues: venueData.venues || [], bookings: Array.isArray(bookings) ? bookings : [] }));
+      ]).then(([venueData, vendorData, bookings]) => {
+        hydrateFromServer({ account: authenticated, venues: venueData.venues || [], vendors: vendorData.vendors || [], bookings: Array.isArray(bookings) ? bookings : [] });
+        setAuthState("authenticated");
+      });
     };
     fetch("/api/auth/me").then(async (response) => {
       if (response.ok) return response.json();
@@ -51,7 +54,7 @@ export function TgShell({ children }: { children: React.ReactNode }) {
       const auth = await authResponse.json();
       if (auth.needsPassword) { setAuthState("needs_password"); if (search.get("setup") !== "password") router.replace("/?setup=password"); }
       return auth.status === "ok" ? auth : null;
-    }).then((account) => { if (account?.status === "authenticated") hydrate(account); else if (authState === "loading" && search.get("setup") !== "password") setAuthState("unauthenticated"); }).catch(() => setAuthState("unauthenticated"));
+    }).then((account) => { if (account?.status === "authenticated") return hydrate(account); if (search.get("setup") !== "password") setAuthState("unauthenticated"); }).catch(() => setAuthState("unauthenticated"));
   // This runs once when the Telegram shell mounts; hydrateFromServer only uses setState.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
