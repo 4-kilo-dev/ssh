@@ -26,6 +26,7 @@ import {
 } from "../db/schema";
 import { getVenueById } from "./venue-service";
 import { checkVenueAccess, getVenueForAccount } from "./venue-staff-service";
+import { notifyVenueStaff } from "@/lib/telegram-bot";
 
 export interface CreateConversationInput {
   venueId: string;
@@ -78,7 +79,7 @@ export async function createConversation(input: CreateConversationInput): Promis
     throw new Error("Venue not found");
   }
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // 1. Create conversation record
     const [conv] = await tx
       .insert(inquiryConversations)
@@ -101,6 +102,16 @@ export async function createConversation(input: CreateConversationInput): Promis
 
     return conv;
   });
+
+  // Instant notification to venue staff via Telegram
+  notifyVenueStaff(input.venueId, {
+    title: "New Customer Inquiry!",
+    body: `Subject: ${input.subject || "General inquiry"}\nMessage: "${trimmedMessage.slice(0, 140)}"`,
+    actionText: "Reply to Customer",
+    actionUrl: `${process.env.TELEGRAM_WEBAPP_URL || "https://addisvenue.com"}/manager/venue`,
+  }).catch(() => {});
+
+  return result;
 }
 
 /**

@@ -87,13 +87,12 @@ export const sessions = pgTable("sessions", {
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 
-// Phase 3: Venues table — owned by exactly one venue_manager
+// Phase 3: Venues table — owned by venue_manager / hospitality group
 export const venues = pgTable("venues", {
   id: uuid("id").defaultRandom().primaryKey(),
   managerId: uuid("manager_id")
     .notNull()
-    .references(() => accounts.id, { onDelete: "cascade" })
-    .unique(),
+    .references(() => accounts.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   area: text("area").notNull(),
   type: text("type").notNull(),

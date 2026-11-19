@@ -19,7 +19,8 @@ import {
   type VenueMemberRole,
   type Account,
 } from "@/lib/db/schema";
-import { getAccountById, getAccountByPhone, createAccount } from "@/lib/services/account-service";
+import { getAccountById, getAccountByPhone, createAccount, hasCredentials } from "@/lib/services/account-service";
+import { issueOnboardingToken } from "@/lib/auth/tokens";
 import { normalizeEthiopianPhone } from "@/lib/phone";
 
 export interface VenueStaffMember {
@@ -32,6 +33,9 @@ export interface VenueStaffMember {
   title: string | null;
   isActive: boolean;
   isPrimaryOwner: boolean;
+  needsPasswordSetup?: boolean;
+  inviteUrl?: string;
+  onboardingToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -247,6 +251,17 @@ export async function addStaffMember(input: AddStaffInput): Promise<VenueStaffMe
 
   const [venue] = await db.select().from(venues).where(eq(venues.id, venueId)).limit(1);
 
+  // Check if staff member needs to set their initial password
+  const hasCreds = await hasCredentials(targetAccount.id);
+  let inviteUrl: string | undefined;
+  let onboardingToken: string | undefined;
+
+  if (!hasCreds) {
+    const tokenRecord = await issueOnboardingToken(targetAccount.id);
+    onboardingToken = tokenRecord.token;
+    inviteUrl = `/onboard?token=${tokenRecord.token}`;
+  }
+
   return {
     id: saved.id,
     venueId: saved.venueId,
@@ -257,6 +272,9 @@ export async function addStaffMember(input: AddStaffInput): Promise<VenueStaffMe
     title: saved.title,
     isActive: saved.isActive,
     isPrimaryOwner: venue ? venue.managerId === targetAccount.id : false,
+    needsPasswordSetup: !hasCreds,
+    inviteUrl,
+    onboardingToken,
     createdAt: saved.createdAt,
     updatedAt: saved.updatedAt,
   };
@@ -459,5 +477,191 @@ export async function getVenueForAccount(accountId: string): Promise<Venue | nul
     .limit(1);
 
   return member ?? null;
+}
+
+/**
+ * Generates an onboarding password-setup link for an existing staff member.
+ */
+export async function issueStaffInviteToken(
+  venueId: string,
+  staffAccountId: string,
+  callerId: string,
+  callerRole?: string
+): Promise<{ inviteUrl: string; token: string }> {
+  const access = await checkVenueAccess(venueId, callerId, "owner");
+  if (!access.authorized && callerRole !== "super_admin") {
+    throw new Error("Unauthorized: only venue owners or super_admin can generate staff invite links");
+  }
+
+  const tokenRecord = await issueOnboardingToken(staffAccountId);
+  return {
+    token: tokenRecord.token,
+    inviteUrl: `/onboard?token=${tokenRecord.token}`,
+  };
+}
+
+/**
+ * Retrieves all venues that an account owns or is an active member of (supports multi-venue groups).
+ */
+export async function listVenuesForAccount(accountId: string): Promise<Venue[]> {
+  const db = getDb();
+
+  // 1. Venues where account is primary managerId
+  const ownedVenues = await db
+    .select()
+    .from(venues)
+    .where(eq(venues.managerId, accountId));
+
+  // 2. Venues where account is an active member in venue_members
+  const memberVenues = await db
+    .select({
+      id: venues.id,
+      managerId: venues.managerId,
+      name: venues.name,
+      area: venues.area,
+      type: venues.type,
+      description: venues.description,
+      contactPhone: venues.contactPhone,
+      contactEmail: venues.contactEmail,
+      policies: venues.policies,
+      amenities: venues.amenities,
+      photos: venues.photos,
+      createdAt: venues.createdAt,
+      updatedAt: venues.updatedAt,
+    })
+    .from(venueMembers)
+    .innerJoin(venues, eq(venueMembers.venueId, venues.id))
+    .where(and(eq(venueMembers.accountId, accountId), eq(venueMembers.isActive, true)));
+
+  // Combine and deduplicate by venue ID
+  const map = new Map<string, Venue>();
+  for (const v of ownedVenues) map.set(v.id, v);
+  for (const v of memberVenues) map.set(v.id, v);
+
+  return Array.from(map.values());
+}
+
+export interface OnboardPartnerVenueInput {
+  venueName: string;
+  area: string;
+  type: string;
+  description?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  policies?: string;
+  managerName: string;
+  managerPhone: string;
+  managerTitle?: string;
+  callerId: string;
+  callerRole?: string;
+}
+
+export interface OnboardPartnerVenueResult {
+  venue: Venue;
+  manager: Account;
+  onboardingToken?: string;
+  inviteUrl?: string;
+  isExistingAccount: boolean;
+}
+
+/**
+ * Admin Workflow A: Super Admin onboards a new partner venue (e.g. Capital Hotel & Spa).
+ * Creates venue, provisions manager account with 'venue_manager' role,
+ * and issues a one-time onboarding token link.
+ */
+export async function onboardPartnerVenue(input: OnboardPartnerVenueInput): Promise<OnboardPartnerVenueResult> {
+  const {
+    venueName,
+    area,
+    type,
+    description,
+    contactPhone,
+    contactEmail,
+    policies,
+    managerName,
+    managerPhone,
+    managerTitle = "Director of Banquets & Events",
+    callerId,
+    callerRole,
+  } = input;
+
+  if (callerRole !== "super_admin") {
+    throw new Error("Unauthorized: only super_admin can onboard partner venues");
+  }
+
+  const normalizedPhone = normalizeEthiopianPhone(managerPhone) || managerPhone.trim();
+  if (!normalizedPhone) {
+    throw new Error("Valid manager mobile phone number is required");
+  }
+
+  const db = getDb();
+
+  // 1. Find or create the manager's account
+  let manager = await getAccountByPhone(normalizedPhone);
+  let isExisting = true;
+
+  if (!manager) {
+    isExisting = false;
+    manager = await createAccount({
+      name: managerName.trim() || "Venue Manager",
+      phone: normalizedPhone,
+      role: "venue_manager",
+    });
+  } else if (manager.role === "user") {
+    const [promoted] = await db
+      .update(accounts)
+      .set({ role: "venue_manager", updatedAt: new Date() })
+      .where(eq(accounts.id, manager.id))
+      .returning();
+    manager = promoted;
+  }
+
+  // 2. Create the Venue
+  const [createdVenue] = await db
+    .insert(venues)
+    .values({
+      managerId: manager.id,
+      name: venueName.trim(),
+      area: area.trim(),
+      type: type.trim(),
+      description: description?.trim() || null,
+      contactPhone: contactPhone?.trim() || normalizedPhone,
+      contactEmail: contactEmail?.trim() || null,
+      policies: policies?.trim() || null,
+      amenities: [],
+      photos: [],
+    })
+    .returning();
+
+  // 3. Register as Primary Owner in venue_members
+  await db
+    .insert(venueMembers)
+    .values({
+      venueId: createdVenue.id,
+      accountId: manager.id,
+      role: "owner",
+      title: managerTitle.trim() || "Primary Owner",
+      isActive: true,
+    })
+    .onConflictDoNothing();
+
+  // 4. Check if manager has a password set; if not, issue an onboarding token
+  const credsExist = await hasCredentials(manager.id);
+  let inviteUrl: string | undefined;
+  let onboardingToken: string | undefined;
+
+  if (!credsExist) {
+    const tokenRecord = await issueOnboardingToken(manager.id);
+    onboardingToken = tokenRecord.token;
+    inviteUrl = `/onboard?token=${tokenRecord.token}`;
+  }
+
+  return {
+    venue: createdVenue,
+    manager,
+    onboardingToken,
+    inviteUrl,
+    isExistingAccount: isExisting,
+  };
 }
 

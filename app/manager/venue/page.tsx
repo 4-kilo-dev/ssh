@@ -32,6 +32,8 @@ import {
   UserPlus,
   ArrowLeftRight,
   UserX,
+  Copy,
+  Link2,
 } from "lucide-react";
 
 interface Account {
@@ -183,7 +185,8 @@ export default function ManagerVenuePage() {
   const [isUsingPreset, setIsUsingPreset] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Staff & Team Management state (Phase 3.5)
+  // Staff & Team Management state (Phase 3.5 & Multi-Venue)
+  const [managedVenues, setManagedVenues] = useState<Venue[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [newStaffPhone, setNewStaffPhone] = useState("");
   const [newStaffName, setNewStaffName] = useState("");
@@ -193,6 +196,8 @@ export default function ManagerVenuePage() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferPhone, setTransferPhone] = useState("");
   const [transferring, setTransferring] = useState(false);
+  const [staffInviteModal, setStaffInviteModal] = useState<{ staffName: string; inviteUrl: string } | null>(null);
+  const [copiedStaffInvite, setCopiedStaffInvite] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -228,8 +233,8 @@ export default function ManagerVenuePage() {
     }
   }, [selectedHall, scheduleDate]);
 
-  // Load account and venue on mount
-  const refreshData = async () => {
+  // Load account and venue on mount or venue switch
+  const refreshData = async (targetVenueId?: string) => {
     setLoading(true);
     setStatusMessage(null);
     try {
@@ -237,6 +242,7 @@ export default function ManagerVenuePage() {
       if (!meRes.ok) {
         setAccount(null);
         setVenue(null);
+        setManagedVenues([]);
         setHalls([]);
         setLoading(false);
         return;
@@ -247,11 +253,15 @@ export default function ManagerVenuePage() {
 
       if (meData.account?.role === "venue_manager") {
         // Find existing venue for this manager (either primary owner or invited staff member)
-        const managedRes = await fetch("/api/venues/managed");
+        const managedUrl = targetVenueId
+          ? `/api/venues/managed?venueId=${encodeURIComponent(targetVenueId)}`
+          : "/api/venues/managed";
+        const managedRes = await fetch(managedUrl);
         let myVenue: Venue | null = null;
         if (managedRes.ok) {
           const managedData = await managedRes.json();
           myVenue = managedData.venue || null;
+          setManagedVenues(managedData.venues || (myVenue ? [myVenue] : []));
           if (managedData.staff) {
             setStaffList(managedData.staff);
           }
@@ -262,6 +272,9 @@ export default function ManagerVenuePage() {
           if (listRes.ok) {
             const { venues } = await listRes.json();
             myVenue = venues.find((v: Venue) => v.managerId === meData.account.id) || null;
+            if (myVenue) {
+              setManagedVenues([myVenue]);
+            }
           }
         }
 
@@ -324,6 +337,10 @@ export default function ManagerVenuePage() {
   useEffect(() => {
     refreshData();
   }, []);
+
+  const switchVenue = async (venueId: string) => {
+    await refreshData(venueId);
+  };
 
   const switchDemoManager = async (preset: "A" | "B" | "C" | "D") => {
     setLoading(true);
@@ -580,6 +597,12 @@ export default function ManagerVenuePage() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to add staff member");
       }
+      if (data.member?.inviteUrl) {
+        setStaffInviteModal({
+          staffName: data.member.name,
+          inviteUrl: data.member.inviteUrl,
+        });
+      }
       setStatusMessage({
         type: "success",
         text: `Staff member ${data.member.name} (${data.member.phone}) added successfully as ${data.member.role}!`,
@@ -587,11 +610,36 @@ export default function ManagerVenuePage() {
       setNewStaffPhone("");
       setNewStaffName("");
       setNewStaffTitle("");
-      await refreshData();
+      await refreshData(venue.id);
     } catch (err) {
       setStatusMessage({ type: "error", text: err instanceof Error ? err.message : "Error adding staff member" });
     } finally {
       setStaffSubmitting(false);
+    }
+  };
+
+  const handleGetStaffInvite = async (staffAccountId: string, staffName: string) => {
+    if (!venue) return;
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/venues/${venue.id}/staff/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffAccountId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to generate invite link");
+      }
+      setStaffInviteModal({
+        staffName,
+        inviteUrl: data.inviteUrl,
+      });
+    } catch (err) {
+      setStatusMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Error generating invite link",
+      });
     }
   };
 
@@ -1187,6 +1235,43 @@ export default function ManagerVenuePage() {
       ) : (
         /* Venue Active Overview & Hall Management */
         <div style={{ display: "grid", gap: "24px" }}>
+          {/* Multi-Venue Hospitality Switcher */}
+          {managedVenues.length > 1 && (
+            <div
+              className="card"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+                padding: "12px 18px",
+                background: "var(--paper)",
+                border: "1px solid var(--teal)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Building2 size={16} style={{ color: "var(--teal)" }} />
+                <span style={{ fontSize: "13px", fontWeight: 700 }}>Hospitality Group Venue Switcher:</span>
+                <span style={{ fontSize: "12px", color: "var(--muted)" }}>
+                  ({managedVenues.length} properties managed)
+                </span>
+              </div>
+              <select
+                value={venue.id}
+                onChange={(e) => switchVenue(e.target.value)}
+                className="field"
+                style={{ width: "auto", minWidth: "240px", padding: "6px 12px", fontSize: "13px" }}
+              >
+                {managedVenues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.area})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Venue Card */}
           <div className="card" style={{ padding: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
@@ -1598,6 +1683,81 @@ export default function ManagerVenuePage() {
               </div>
             )}
 
+            {/* Staff Invite Link Modal / Banner */}
+            {staffInviteModal && (
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                  <div>
+                    <h4
+                      style={{
+                        margin: "0 0 4px",
+                        fontSize: "14px",
+                        color: "#065f46",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <Check size={16} />
+                      Staff Onboarding & Password Setup Link for {staffInviteModal.staffName}
+                    </h4>
+                    <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#047857" }}>
+                      Send this one-time link to the invited staff member. They will be able to set their password and sign in directly.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStaffInviteModal(null);
+                      setCopiedStaffInvite(false);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: "4px 8px", fontSize: "12px" }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}${staffInviteModal.inviteUrl}`
+                        : staffInviteModal.inviteUrl
+                    }
+                    className="field"
+                    style={{ flex: 1, padding: "8px 12px", fontSize: "13px", fontFamily: "monospace", background: "#ffffff" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fullUrl =
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}${staffInviteModal.inviteUrl}`
+                          : staffInviteModal.inviteUrl;
+                      navigator.clipboard.writeText(fullUrl);
+                      setCopiedStaffInvite(true);
+                      setTimeout(() => setCopiedStaffInvite(false), 3000);
+                    }}
+                    className="btn btn-primary"
+                    style={{ fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <Copy size={14} />
+                    {copiedStaffInvite ? "Copied!" : "Copy Link"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Staff Members List */}
             <div style={{ display: "grid", gap: "10px", marginBottom: "24px" }}>
               {staffList.map((member) => (
@@ -1676,27 +1836,39 @@ export default function ManagerVenuePage() {
                   </div>
 
                   {/* Member Actions */}
-                  {!member.isPrimaryOwner && (
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStaffStatus(member.accountId, member.isActive)}
-                        className="btn btn-secondary"
-                        style={{ fontSize: "12px", padding: "4px 8px" }}
-                      >
-                        {member.isActive ? "Deactivate" : "Activate"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveStaff(member.accountId, member.name)}
-                        className="btn btn-secondary"
-                        style={{ fontSize: "12px", padding: "4px 8px", color: "#dc2626", borderColor: "#fecaca" }}
-                        title="Remove staff member from venue"
-                      >
-                        <UserX size={14} />
-                      </button>
-                    </div>
-                  )}
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => handleGetStaffInvite(member.accountId, member.name)}
+                      className="btn btn-secondary"
+                      style={{ fontSize: "12px", padding: "4px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                      title="Get password setup & invite link"
+                    >
+                      <Link2 size={13} />
+                      <span>Invite Link</span>
+                    </button>
+                    {!member.isPrimaryOwner && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStaffStatus(member.accountId, member.isActive)}
+                          className="btn btn-secondary"
+                          style={{ fontSize: "12px", padding: "4px 8px" }}
+                        >
+                          {member.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStaff(member.accountId, member.name)}
+                          className="btn btn-secondary"
+                          style={{ fontSize: "12px", padding: "4px 8px", color: "#dc2626", borderColor: "#fecaca" }}
+                          title="Remove staff member from venue"
+                        >
+                          <UserX size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

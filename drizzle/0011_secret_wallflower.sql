@@ -1,0 +1,1 @@
+ALTER TABLE "venues" DROP CONSTRAINT "venues_manager_id_unique";

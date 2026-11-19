@@ -21,6 +21,9 @@ import {
   ArrowRight,
   ExternalLink,
   Sparkles,
+  Copy,
+  Check,
+  UserPlus,
 } from "lucide-react";
 
 interface Account {
@@ -92,6 +95,24 @@ export default function SuperAdminPage() {
   // Ticket status update state
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
+
+  // Partner Onboarding state (Workflow A)
+  const [partnerVenueName, setPartnerVenueName] = useState("");
+  const [partnerArea, setPartnerArea] = useState("22 Mazoria");
+  const [partnerType, setPartnerType] = useState("Hotel ballroom");
+  const [partnerDesc, setPartnerDesc] = useState("");
+  const [partnerContactPhone, setPartnerContactPhone] = useState("");
+  const [partnerManagerName, setPartnerManagerName] = useState("");
+  const [partnerManagerPhone, setPartnerManagerPhone] = useState("");
+  const [partnerManagerTitle, setPartnerManagerTitle] = useState("Director of Banquets & Events");
+  const [onboardingPartner, setOnboardingPartner] = useState(false);
+  const [onboardResult, setOnboardResult] = useState<{
+    venueName: string;
+    managerName: string;
+    managerPhone: string;
+    inviteUrl: string;
+  } | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // 1. Initial Load: check session
   useEffect(() => {
@@ -270,6 +291,65 @@ export default function SuperAdminPage() {
     }
   };
 
+  const handleOnboardPartner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerVenueName || !partnerManagerPhone) return;
+
+    setOnboardingPartner(true);
+    setStatusMessage(null);
+    setOnboardResult(null);
+
+    try {
+      const res = await fetch("/api/admin/onboard-venue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venueName: partnerVenueName,
+          area: partnerArea,
+          type: partnerType,
+          description: partnerDesc,
+          contactPhone: partnerContactPhone || partnerManagerPhone,
+          managerName: partnerManagerName || "Lead Venue Manager",
+          managerPhone: partnerManagerPhone,
+          managerTitle: partnerManagerTitle,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to onboard partner venue");
+      }
+
+      const fullInvite = `${window.location.origin}${data.inviteUrl || `/login`}`;
+      setOnboardResult({
+        venueName: data.venue.name,
+        managerName: data.manager.name,
+        managerPhone: data.manager.phone,
+        inviteUrl: fullInvite,
+      });
+
+      setStatusMessage({
+        type: "success",
+        text: `Partner venue '${data.venue.name}' successfully onboarded! Share the setup link with ${data.manager.name}.`,
+      });
+
+      // Clear form
+      setPartnerVenueName("");
+      setPartnerDesc("");
+      setPartnerContactPhone("");
+      setPartnerManagerName("");
+      setPartnerManagerPhone("");
+
+      // Refresh overview counts
+      loadOverview();
+      loadAuditLogs();
+    } catch (err: any) {
+      setStatusMessage({ type: "error", text: err.message });
+    } finally {
+      setOnboardingPartner(false);
+    }
+  };
+
   return (
     <div className="page-stack" style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
       {/* Top Banner / Breadcrumb */}
@@ -379,6 +459,197 @@ export default function SuperAdminPage() {
       {/* Super Admin Dashboard Content */}
       {account && account.role === "super_admin" && (
         <>
+          {/* Section 0: Partner Venue Onboarding (Workflow A) */}
+          <div className="card" style={{ marginBottom: "2rem", border: "1px solid var(--line)", background: "var(--surface)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div>
+                <span className="pill" style={{ background: "rgba(13, 148, 136, 0.12)", color: "var(--teal)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
+                  Workflow A • B2B Partner Onboarding
+                </span>
+                <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0.4rem 0 0.2rem 0", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Building2 size={20} style={{ color: "var(--teal)" }} />
+                  Onboard Partner Venue & Lead Manager
+                </h2>
+                <p style={{ margin: 0, color: "var(--muted, #64748b)", fontSize: "0.875rem" }}>
+                  Register a high-profile partner venue (e.g. Capital Hotel & Spa, Skylight) and generate a secure one-time onboarding link for their lead manager.
+                </p>
+              </div>
+            </div>
+
+            {/* Success Box: Copyable Invite Link */}
+            {onboardResult && (
+              <div
+                style={{
+                  padding: "1rem 1.25rem",
+                  background: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
+                  borderRadius: "8px",
+                  marginBottom: "1.25rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <CheckCircle2 size={18} style={{ color: "#059669" }} />
+                  <strong style={{ color: "#065f46", fontSize: "0.95rem" }}>
+                    Partner Venue Successfully Onboarded!
+                  </strong>
+                </div>
+                <div style={{ fontSize: "0.875rem", color: "#047857", marginBottom: "10px" }}>
+                  <strong>{onboardResult.venueName}</strong> registered for lead manager{" "}
+                  <strong>{onboardResult.managerName}</strong> ({onboardResult.managerPhone}).
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    readOnly
+                    className="field"
+                    style={{ flex: 1, minWidth: 260, padding: "8px 12px", background: "#fff", fontSize: "13px", fontFamily: "monospace" }}
+                    value={onboardResult.inviteUrl}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(onboardResult.inviteUrl);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 3000);
+                    }}
+                  >
+                    {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedLink ? "Link Copied!" : "Copy Onboarding Link"}
+                  </button>
+                </div>
+                <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#065f46" }}>
+                  Send this link to the manager via Telegram or SMS. When they open it, they will set their password and immediately take ownership of the venue.
+                </p>
+              </div>
+            )}
+
+            {/* Onboard Form */}
+            <form onSubmit={handleOnboardPartner} style={{ display: "grid", gap: "1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label htmlFor="pv-name" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Venue Name *
+                  </label>
+                  <input
+                    id="pv-name"
+                    type="text"
+                    className="field"
+                    placeholder="e.g. Capital Hotel & Spa"
+                    value={partnerVenueName}
+                    onChange={(e) => setPartnerVenueName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="pv-area" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Sub-City / Area *
+                  </label>
+                  <input
+                    id="pv-area"
+                    type="text"
+                    className="field"
+                    placeholder="e.g. 22 Mazoria / Yeka"
+                    value={partnerArea}
+                    onChange={(e) => setPartnerArea(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="pv-type" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Venue Type *
+                  </label>
+                  <select
+                    id="pv-type"
+                    className="field"
+                    value={partnerType}
+                    onChange={(e) => setPartnerType(e.target.value)}
+                  >
+                    <option value="Hotel ballroom">Hotel ballroom</option>
+                    <option value="Wedding hall">Wedding hall</option>
+                    <option value="Conference space">Conference space</option>
+                    <option value="Garden venue">Garden venue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="pv-contact" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Official Hotel Contact Phone
+                  </label>
+                  <input
+                    id="pv-contact"
+                    type="tel"
+                    className="field"
+                    placeholder="e.g. 0116672100"
+                    value={partnerContactPhone}
+                    onChange={(e) => setPartnerContactPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", paddingTop: "0.5rem", borderTop: "1px dashed var(--line)" }}>
+                <div>
+                  <label htmlFor="pm-name" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Lead Manager Full Name
+                  </label>
+                  <input
+                    id="pm-name"
+                    type="text"
+                    className="field"
+                    placeholder="e.g. Daniel Banquet Director"
+                    value={partnerManagerName}
+                    onChange={(e) => setPartnerManagerName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="pm-phone" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Manager Mobile Phone (Login Identity) *
+                  </label>
+                  <input
+                    id="pm-phone"
+                    type="tel"
+                    className="field"
+                    placeholder="e.g. 0911223344"
+                    value={partnerManagerPhone}
+                    onChange={(e) => setPartnerManagerPhone(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="pm-title" style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                    Manager Job Title
+                  </label>
+                  <input
+                    id="pm-title"
+                    type="text"
+                    className="field"
+                    placeholder="e.g. Director of Banquets & Events"
+                    value={partnerManagerTitle}
+                    onChange={(e) => setPartnerManagerTitle(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={onboardingPartner || !partnerVenueName || !partnerManagerPhone}
+                  style={{ fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <UserPlus size={16} />
+                  {onboardingPartner ? "Onboarding Partner Venue..." : "Onboard Partner & Generate Setup Link"}
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Section 1: Overview KPIs */}
           <div style={{ marginBottom: "2rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>

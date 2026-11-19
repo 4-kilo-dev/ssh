@@ -27,6 +27,7 @@ export interface CreateVenueInput {
   policies?: string;
   amenities?: string[];
   photos?: string[];
+  allowMultiple?: boolean;
 }
 
 export interface UpdateVenueInput {
@@ -63,10 +64,12 @@ export async function createVenue(input: CreateVenueInput): Promise<Venue> {
     throw new Error("Only venue_manager accounts can own a venue");
   }
 
-  // Check if this manager already owns a venue
-  const existing = await getVenueByManagerId(input.managerId);
-  if (existing) {
-    throw new Error("Manager already owns a venue");
+  // Check if this manager already owns a venue (unless allowMultiple is explicitly permitted)
+  if (!input.allowMultiple) {
+    const existing = await getVenueByManagerId(input.managerId);
+    if (existing) {
+      throw new Error("Manager already owns a venue");
+    }
   }
 
   const db = getDb();

@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db/client";
-import { accounts } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { accounts, venues, venueMembers } from "@/lib/db/schema";
+import { eq, and, or, isNotNull, inArray } from "drizzle-orm";
 import { getAccountByPhone, getAccountByTelegramId, hasCredentials } from "@/lib/services/account-service";
 
 const TELEGRAM_API = "https://api.telegram.org/bot";
@@ -82,3 +82,100 @@ export async function setupTelegramPassword(chatId: number, userId: number, name
   await callTelegram("sendMessage", { chat_id: chatId, text: "Your phone number is saved. Create your password inside the Addis Gathering Mini App.", reply_markup: { remove_keyboard: true } });
   await callTelegram("sendMessage", { chat_id: chatId, text: "Create your password to finish setting up your account.", reply_markup: { inline_keyboard: [[{ text: "Create my password", web_app: { url } }]] } });
 }
+
+/**
+ * Sends a Telegram notification to a chat or user ID.
+ * Fails safely without throwing so notifications never crash core transactions.
+ */
+export async function sendTelegramNotification(
+  chatId: number | string,
+  text: string,
+  actionButton?: { text: string; url: string }
+): Promise<boolean> {
+  try {
+    const body: Record<string, unknown> = {
+      chat_id: chatId,
+      text,
+      parse_mode: "HTML",
+    };
+
+    if (actionButton) {
+      body.reply_markup = {
+        inline_keyboard: [[{ text: actionButton.text, url: actionButton.url }]],
+      };
+    }
+
+    await callTelegram("sendMessage", body);
+    return true;
+  } catch (err) {
+    console.warn("Telegram notification send error:", err instanceof Error ? err.message : err);
+    return false;
+  }
+}
+
+/**
+ * Notifies all active staff members of a venue via Telegram when an event occurs
+ * (e.g. new booking request submitted, new customer inquiry).
+ */
+export async function notifyVenueStaff(
+  venueId: string,
+  alert: {
+    title: string;
+    body: string;
+    actionText?: string;
+    actionUrl?: string;
+  }
+): Promise<{ notifiedCount: number }> {
+  try {
+    const db = getDb();
+
+    // Find all active staff accounts associated with this venue
+    const staffAccounts = await db
+      .select({
+        id: accounts.id,
+        telegramId: accounts.telegramId,
+        name: accounts.name,
+      })
+      .from(accounts)
+      .where(
+        and(
+          isNotNull(accounts.telegramId),
+          or(
+            // Primary owner
+            inArray(
+              accounts.id,
+              db.select({ id: venues.managerId }).from(venues).where(eq(venues.id, venueId))
+            ),
+            // Venue member
+            inArray(
+              accounts.id,
+              db
+                .select({ id: venueMembers.accountId })
+                .from(venueMembers)
+                .where(and(eq(venueMembers.venueId, venueId), eq(venueMembers.isActive, true)))
+            )
+          )
+        )
+      );
+
+    let count = 0;
+    const formattedMessage = `🔔 <b>${alert.title}</b>\n\n${alert.body}`;
+
+    for (const staff of staffAccounts) {
+      if (staff.telegramId) {
+        const sent = await sendTelegramNotification(
+          staff.telegramId,
+          formattedMessage,
+          alert.actionUrl ? { text: alert.actionText || "View on AddisVenue", url: alert.actionUrl } : undefined
+        );
+        if (sent) count++;
+      }
+    }
+
+    return { notifiedCount: count };
+  } catch (err) {
+    console.warn("notifyVenueStaff error:", err instanceof Error ? err.message : err);
+    return { notifiedCount: 0 };
+  }
+}
+

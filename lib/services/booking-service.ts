@@ -31,6 +31,7 @@ import {
 import { getVenueById } from "./venue-service";
 import { checkVenueAccess } from "./venue-staff-service";
 import { logAuditEvent } from "./audit-service";
+import { notifyVenueStaff } from "@/lib/telegram-bot";
 
 export interface BookingWithHalls extends Booking {
   halls: BookingHall[];
@@ -179,6 +180,14 @@ export async function createBooking(input: CreateBookingInput): Promise<BookingW
       notes: input.notes?.trim() ?? null,
     },
   });
+
+  // Instant notification to venue staff via Telegram
+  notifyVenueStaff(input.venueId, {
+    title: "New Booking Request Received!",
+    body: `A customer requested a booking for ${input.guestCount ?? "guests"} from ${input.startTime.toISOString().slice(0, 16)} to ${input.endTime.toISOString().slice(0, 16)}. Notes: ${input.notes || "None"}.`,
+    actionText: "Open Manager Dashboard",
+    actionUrl: `${process.env.TELEGRAM_WEBAPP_URL || "https://addisvenue.com"}/manager/venue`,
+  }).catch(() => {});
 
   return created;
 }
