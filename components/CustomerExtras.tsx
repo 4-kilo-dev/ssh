@@ -8,6 +8,7 @@ import { formatDate, formatETB, formatNumber } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { FormState, ListState, type FormStatus } from "@/components/StatePatterns";
 import { StatusBadge } from "@/components/StatusBadge";
+import { isTelegramMiniApp } from "@/lib/telegram";
 
 function useLoading() {
   const [loading, setLoading] = useState(true);
@@ -153,7 +154,7 @@ export function CustomerNotifications() {
 }
 
 export function CustomerSettings() {
-  const demo = useDemo(); const { locale } = demo; const current = customerAccount(demo);
+  const demo = useDemo(); const { locale } = demo; const current = isTelegramMiniApp() ? { id: "telegram-user", name: "", phone: "" } : customerAccount(demo);
   const [name, setName] = useState(current.name); const [phone, setPhone] = useState(current.phone); const [email, setEmail] = useState(current.email || "");
   const [prefs, setPrefs] = useState(demo.notificationPreferences); const [status, setStatus] = useState<FormStatus>("idle"); const [message, setMessage] = useState(""); const [errors, setErrors] = useState<Record<string,string>>({});
   const [serverAccount, setServerAccount] = useState<{ id: string; name: string; phone: string; role: string; telegramId?: string | null } | null>(null);

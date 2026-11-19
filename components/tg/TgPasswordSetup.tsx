@@ -24,7 +24,7 @@ export function TgPasswordSetup() {
       const response = await fetch("/api/auth/telegram/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData, password }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create password");
-      router.replace("/");
+      window.location.assign("/tg");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to create password");
     } finally {

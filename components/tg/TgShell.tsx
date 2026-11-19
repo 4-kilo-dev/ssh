@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Bell } from "lucide-react";
 import { Link, useRouter } from "@/lib/nav";
 import { t } from "@/lib/i18n";
 import { useDemo } from "@/lib/store";
-import { initTelegram, isTelegramMiniApp, setTelegramBackButton } from "@/lib/telegram";
+import { getTelegramInitData, initTelegram, isTelegramMiniApp, setTelegramBackButton } from "@/lib/telegram";
 import { TgBottomNav } from "@/components/tg/TgBottomNav";
 
 const rootTabs = ["/", "/venues", "/vendors", "/my-event", "/profile"];
@@ -20,6 +20,7 @@ export function TgShell({ children }: { children: React.ReactNode }) {
   const { locale, setLocale, hydrateFromServer } = useDemo();
   const router = useRouter();
   const pathname = usePathname();
+  const search = useSearchParams();
   const brand = t("brand", locale);
   const logical = pathname.replace(/^\/tg(?=\/|$)/, "") || "/";
   const atRootTab = rootTabs.includes(logical);
@@ -28,13 +29,23 @@ export function TgShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { initTelegram(); }, []);
   useEffect(() => {
     if (!isTelegramMiniApp()) return;
-    fetch("/api/auth/me").then((response) => response.ok ? response.json() : null).then((account) => {
+    const hydrate = (account: { account?: { id: string; name: string; phone?: string; role: string; telegramId?: string | null }; status?: string } | null) => {
       if (!account?.account || account.status !== "authenticated") return;
+      const authenticated = account.account;
       return Promise.all([
         fetch("/api/venues").then((response) => response.ok ? response.json() : { venues: [] }),
         fetch("/api/bookings").then((response) => response.ok ? response.json() : []),
-      ]).then(([venueData, bookings]) => hydrateFromServer({ account: account.account, venues: venueData.venues || [], bookings: Array.isArray(bookings) ? bookings : [] }));
-    }).catch(() => {});
+      ]).then(([venueData, bookings]) => hydrateFromServer({ account: authenticated, venues: venueData.venues || [], bookings: Array.isArray(bookings) ? bookings : [] }));
+    };
+    fetch("/api/auth/me").then(async (response) => {
+      if (response.ok) return response.json();
+      const initData = getTelegramInitData();
+      if (!initData) return null;
+      const authResponse = await fetch("/api/auth/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData }) });
+      const auth = await authResponse.json();
+      if (auth.needsPassword && search.get("setup") !== "password") router.replace("/?setup=password");
+      return auth.status === "ok" ? auth : null;
+    }).then(hydrate).catch(() => {});
   // This runs once when the Telegram shell mounts; hydrateFromServer only uses setState.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
