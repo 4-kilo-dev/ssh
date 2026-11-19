@@ -38,7 +38,7 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
   return <article className="venue-card vendor-market-card card">
     <div className="venue-image-wrap-rel">
       <Link href={`/vendors/${vendor.id}`} className="venue-image-link" aria-label={`${t("viewDetails", locale)}: ${vendor.name}`}>
-        <img className="venue-image" src={vendorImage(vendor.category)} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" />
+        <img className="venue-image" src={vendorImage(vendor.category)} alt={`${localCategory(vendor.category, locale)} sample portfolio`} loading="lazy" onError={(event) => { event.currentTarget.src = "/images/vendor-generic-1.svg"; }} />
         <span className="photo-chip"><Users size={13} aria-hidden="true" />{vendor.area}</span>
         <span className="card-toprated"><Star size={12} fill="currentColor" aria-hidden="true" />{t("topRated", locale)}</span>
       </Link>
