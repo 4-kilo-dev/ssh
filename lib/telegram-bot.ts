@@ -2,7 +2,6 @@ import { getDb } from "@/lib/db/client";
 import { accounts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getAccountByPhone, getAccountByTelegramId, hasCredentials } from "@/lib/services/account-service";
-import { issueOnboardingToken } from "@/lib/auth/tokens";
 
 const TELEGRAM_API = "https://api.telegram.org/bot";
 
@@ -26,6 +25,14 @@ export async function sendMiniAppWelcome(chatId: number | string, userId?: numbe
   const url = appUrl().href;
   await callTelegram("setChatMenuButton", { chat_id: chatId, menu_button: { type: "web_app", text: "Open Addis Gathering", web_app: { url } } });
   const account = userId ? await getAccountByTelegramId(String(userId)) : null;
+  if (!account || account.phone.startsWith("telegram:")) {
+    await callTelegram("sendMessage", {
+      chat_id: chatId,
+      text: "Before we finish your account, please share your phone number. Telegram will ask for your permission first.",
+      reply_markup: { keyboard: [[{ text: "Share my phone number", request_contact: true }]], resize_keyboard: true, one_time_keyboard: true },
+    });
+    return;
+  }
   const needsPassword = !account || !(await hasCredentials(account.id));
   if (needsPassword) {
     const setupUrl = new URL("/tg", url);
@@ -70,8 +77,8 @@ export async function setupTelegramPassword(chatId: number, userId: number, name
     await callTelegram("sendMessage", { chat_id: chatId, text: `Your password is already set. Sign in on the website or mobile app using ${phone} and your password.`, reply_markup: { remove_keyboard: true } });
     return;
   }
-  const token = await issueOnboardingToken(account.id);
-  const url = new URL("/onboard", appUrl());
-  url.searchParams.set("token", token.token);
-  await callTelegram("sendMessage", { chat_id: chatId, text: `Create your password using the button below. This private link expires in 15 minutes. Then sign in on the website or mobile app with ${phone} and that password. Send /start for a new link.`, reply_markup: { inline_keyboard: [[{ text: "Create password", url: url.href }]] } });
+  const url = new URL("/tg", appUrl());
+  url.searchParams.set("setup", "password");
+  await callTelegram("sendMessage", { chat_id: chatId, text: "Your phone number is saved. Create your password inside the Addis Gathering Mini App.", reply_markup: { remove_keyboard: true } });
+  await callTelegram("sendMessage", { chat_id: chatId, text: "Create your password to finish setting up your account.", reply_markup: { inline_keyboard: [[{ text: "Create my password", web_app: { url } }]] } });
 }
