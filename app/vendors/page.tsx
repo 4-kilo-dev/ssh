@@ -221,9 +221,6 @@ export default function VendorsDirectoryPage() {
       {/* Top Banner / Breadcrumb */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <div>
-          <span className="pill" style={{ background: "rgba(13, 148, 136, 0.12)", color: "var(--teal)", fontWeight: 600 }}>
-            Phase 8 • Vendor Marketplace
-          </span>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0.5rem 0 0.25rem 0" }}>
             Addis Event Vendors Directory
           </h1>
@@ -546,17 +543,6 @@ export default function VendorsDirectoryPage() {
         )}
       </div>
 
-      {/* Isolation Statement Footnote */}
-      <div className="card" style={{ padding: "1.25rem", background: "#f8fafc", border: "1px solid var(--line)" }}>
-        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--teal)", marginBottom: "0.25rem" }}>
-          Core Isolation Invariant
-        </div>
-        <p style={{ fontSize: "0.825rem", color: "var(--muted, #64748b)", margin: 0, lineHeight: 1.5 }}>
-          The Vendor Side Module is strictly decoupled from the venue booking engine: vendor listings and boost sponsorships
-          operate as an independent marketplace layer and do not mutate or constrain venue hall availability, double-booking exclusion
-          rules, or deposit workflows.
-        </p>
-      </div>
     </div>
   );
 }
