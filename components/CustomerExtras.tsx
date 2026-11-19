@@ -8,7 +8,6 @@ import { formatDate, formatETB, formatNumber } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { FormState, ListState, type FormStatus } from "@/components/StatePatterns";
 import { StatusBadge } from "@/components/StatusBadge";
-import { isTelegramMiniApp } from "@/lib/telegram";
 
 function useLoading() {
   const [loading, setLoading] = useState(true);
@@ -154,23 +153,25 @@ export function CustomerNotifications() {
 }
 
 export function CustomerSettings() {
-  const demo = useDemo(); const { locale } = demo; const current = isTelegramMiniApp() ? { id: "telegram-user", name: "", phone: "" } : customerAccount(demo);
+  const demo = useDemo(); const { locale } = demo; const current = { id: "backend-account", name: "", phone: "", email: "" };
   const [name, setName] = useState(current.name); const [phone, setPhone] = useState(current.phone); const [email, setEmail] = useState(current.email || "");
   const [prefs, setPrefs] = useState(demo.notificationPreferences); const [status, setStatus] = useState<FormStatus>("idle"); const [message, setMessage] = useState(""); const [errors, setErrors] = useState<Record<string,string>>({});
   const [serverAccount, setServerAccount] = useState<{ id: string; name: string; phone: string; role: string; telegramId?: string | null } | null>(null);
-  useEffect(() => { setPrefs(demo.notificationPreferences); fetch("/api/auth/me").then((response) => response.ok ? response.json() : null).then((data) => { if (data?.status === "authenticated" && data.account) { setServerAccount(data.account); setName(data.account.name); setPhone(data.account.phone); } }).catch(() => {}); }, [demo.notificationPreferences]);
+  const [accountLoading, setAccountLoading] = useState(true);
+  useEffect(() => { setPrefs(demo.notificationPreferences); fetch("/api/auth/me").then((response) => response.ok ? response.json() : null).then((data) => { if (data?.status === "authenticated" && data.account) { setServerAccount(data.account); setName(data.account.name); setPhone(data.account.phone); } }).catch(() => {}).finally(() => setAccountLoading(false)); }, [demo.notificationPreferences]);
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); const next: Record<string,string> = {};
+    if (!serverAccount) { setStatus("error"); setMessage("Please sign in before editing your profile."); return; }
     if (!name.trim()) next.name = t("enterName", locale);
-    if (!serverAccount && !/^(?:09\d{8}|\+2519\d{8})$/.test(phone.replace(/\s/g,""))) next.phone = t("customerPhoneError", locale);
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = t("emailError", locale);
     setErrors(next); if (Object.keys(next).length) { setStatus("error"); setMessage(t("nextStepHint", locale)); return; }
     setStatus("loading"); setMessage("");
-    const save = serverAccount ? fetch("/api/auth/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Unable to save profile"); setServerAccount(data.account); }) : Promise.resolve().then(() => demo.saveCustomer({ ...current, name: name.trim(), phone: phone.trim(), email: email.trim() || undefined }));
+    const save = fetch("/api/auth/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Unable to save profile"); setServerAccount(data.account); });
     save.then(() => { demo.saveNotificationPreferences(prefs); setStatus("success"); setMessage("Profile saved to your account."); }).catch((reason) => { setStatus("error"); setMessage(reason instanceof Error ? reason.message : "Unable to save profile"); });
   }
   async function signOut() { if (serverAccount) await fetch("/api/auth/logout", { method: "POST" }).catch(() => {}); demo.setRole("customer"); setServerAccount(null); setStatus("success"); setMessage("You have been signed out."); }
-  return <div className="page-stack narrow-form"><PageHeading title={t("profileSettingsTitle", locale)} description={serverAccount ? "Manage your Addis Gathering account." : t("accessNotice", locale)} />
+  if (!accountLoading && !serverAccount) return <div className="page-stack narrow-form"><PageHeading title={t("profileSettingsTitle", locale)} description="Your profile is stored in the Addis Gathering backend." /><section className="card form-card"><p>Please sign in to view and manage your account profile.</p><Link className="btn btn-primary" href="/login">Sign in</Link></section></div>;
+  return <div className="page-stack narrow-form"><PageHeading title={t("profileSettingsTitle", locale)} description="Manage your Addis Gathering account connected to the Addis Gathering backend." />
     <FormState status={status} locale={locale} message={message}><form className="card form-card" onSubmit={submit} noValidate>
       <div className="form-section"><h2><UserRound size={17} aria-hidden="true" />{t("profile", locale)}</h2>{serverAccount && <p className="small-note">Signed in as a verified {serverAccount.role.replace("_", " ")} account{serverAccount.telegramId ? " · Telegram connected" : ""}.</p>}<label className="label" htmlFor="settings-name">{t("fullName", locale)} *</label><input id="settings-name" className={`field ${errors.name ? "field-error" : ""}`} value={name} onChange={(e) => setName(e.target.value)} />{errors.name && <p className="field-error-text">{errors.name}</p>}<label className="label" htmlFor="settings-phone">{t("phoneNumber", locale)} *</label><input id="settings-phone" className={`field ${errors.phone ? "field-error" : ""}`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={!!serverAccount} />{errors.phone && <p className="field-error-text">{errors.phone}</p>}<label className="label" htmlFor="settings-email">{t("emailLabel", locale)}</label><input id="settings-email" className={`field ${errors.email ? "field-error" : ""}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />{errors.email && <p className="field-error-text">{errors.email}</p>}</div>
       <fieldset className="form-section"><legend>{t("notificationPreferences", locale)}</legend>{[["booking","prefBookings"],["inquiry","prefInquiries"],["payment","prefPayments"],["vendor","prefVendors"]].map(([key,label]) => <label className="checkbox-card" key={key}><input type="checkbox" checked={!!prefs[key]} onChange={(event) => setPrefs((old) => ({ ...old, [key]: event.target.checked }))} /><span>{t(label, locale)}</span></label>)}</fieldset>
