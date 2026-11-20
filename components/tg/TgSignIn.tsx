@@ -32,9 +32,21 @@ export function TgSignIn() {
 
   function continueWithTelegram() {
     const initData = getTelegramInitData();
-    if (!initData) return;
+    if (!initData) {
+      setError("Telegram authentication data is not available. Please close and reopen the Mini App from the bot.");
+      return;
+    }
     setLoading(true); setError(null);
-    fetch("/api/auth/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData }) }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Authentication failed"); return data; }).then(() => router.push("/")).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Authentication failed")).finally(() => setLoading(false));
+    fetch("/api/auth/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData }) }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok || data.status === "error") throw new Error(data.error || "Authentication failed");
+      if (data.needsPassword || data.status === "needs_password") {
+        router.replace("/?setup=password");
+        return;
+      }
+      if (data.status !== "ok") throw new Error("Authentication could not be completed");
+      router.replace("/");
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Authentication failed")).finally(() => setLoading(false));
   }
 
   return <div className="page-stack narrow-form">
