@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, Eye, EyeOff, Lock, LogOut, ShieldAlert, UserCheck } from "lucide-react";
+import { useSession } from "@/components/SessionProvider";
 
 interface Account {
   id: string;
@@ -37,6 +38,7 @@ function getRoleRedirectPath(role?: string): string {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refresh: refreshSession } = useSession();
   const [phone, setPhone] = useState("+251911000000");
   const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
@@ -77,6 +79,7 @@ export default function LoginPage() {
 
       setAccount(data.account);
       setPassword("");
+      await refreshSession();
 
       // Automatically route to their respective homepage by role
       const target = getRoleRedirectPath(data.account?.role);
@@ -92,6 +95,7 @@ export default function LoginPage() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setAccount(null);
+      await refreshSession();
     } catch (err) {
       console.error(err);
     }
