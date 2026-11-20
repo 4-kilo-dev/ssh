@@ -18,7 +18,7 @@ const rootTabs = ["/", "/venues", "/vendors", "/my-event", "/profile"];
  * absent — AppShell skips them for /tg.
  */
 export function TgShell({ children }: { children: React.ReactNode }) {
-  const { locale, setLocale, hydrateFromServer } = useDemo();
+  const { locale, setLocale, hydrateFromServer, hydrateCatalogFromServer } = useDemo();
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -31,9 +31,21 @@ export function TgShell({ children }: { children: React.ReactNode }) {
   // Boot telegram-web-app.js (no-op in a normal browser).
   useEffect(() => { initTelegram(); }, []);
   useEffect(() => {
-    const inTelegram = isTelegramMiniApp();
-    setTelegramMode(inTelegram);
-    if (!inTelegram) { setAuthState("authenticated"); return; }
+    let cancelled = false;
+    const loadCatalog = async () => {
+      const [venueResponse, vendorResponse] = await Promise.all([fetch("/api/venues"), fetch("/api/vendors?limit=100")]);
+      const venueData = venueResponse.ok ? await venueResponse.json() : { venues: [] };
+      const vendorData = vendorResponse.ok ? await vendorResponse.json() : { vendors: [] };
+      if (!cancelled) {
+        hydrateCatalogFromServer({ venues: venueData.venues || [], vendors: vendorData.vendors || [] });
+        setAuthState("authenticated");
+      }
+    };
+    const authenticate = () => {
+      if (cancelled) return;
+      const inTelegram = isTelegramMiniApp();
+      setTelegramMode(inTelegram);
+      if (!inTelegram) { loadCatalog().catch(() => setAuthState("authenticated")); return; }
     const hydrate = (account: { account?: { id: string; name: string; phone?: string; role: string; telegramId?: string | null }; status?: string } | null) => {
       if (!account?.account || account.status !== "authenticated") return;
       const authenticated = account.account;
@@ -42,6 +54,7 @@ export function TgShell({ children }: { children: React.ReactNode }) {
         fetch("/api/vendors?limit=100").then((response) => response.ok ? response.json() : { vendors: [] }),
         fetch("/api/bookings").then((response) => response.ok ? response.json() : []),
       ]).then(([venueData, vendorData, bookings]) => {
+        if (cancelled) return;
         hydrateFromServer({ account: authenticated, venues: venueData.venues || [], vendors: vendorData.vendors || [], bookings: Array.isArray(bookings) ? bookings : [] });
         setAuthState("authenticated");
       });
@@ -55,6 +68,16 @@ export function TgShell({ children }: { children: React.ReactNode }) {
       if (auth.needsPassword) { setAuthState("needs_password"); if (search.get("setup") !== "password") router.replace("/?setup=password"); }
       return auth.status === "ok" ? auth : null;
     }).then((account) => { if (account?.status === "authenticated") return hydrate(account); if (search.get("setup") !== "password") setAuthState("unauthenticated"); }).catch(() => setAuthState("unauthenticated"));
+    };
+    let attempts = 0;
+    const waitForTelegram = () => {
+      if (cancelled) return;
+      if (isTelegramMiniApp() || attempts >= 20) { authenticate(); return; }
+      attempts += 1;
+      window.setTimeout(waitForTelegram, 100);
+    };
+    waitForTelegram();
+    return () => { cancelled = true; };
   // This runs once when the Telegram shell mounts; hydrateFromServer only uses setState.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
