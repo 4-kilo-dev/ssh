@@ -135,14 +135,10 @@ export function CustomerSavedVendors() {
 
 export function CustomerNotifications() {
   const demo = useDemo(); const { locale } = demo; const loading = useLoading(); const [query, setQuery] = useState("");
-  const notifications = [
-    { id: "notice-booking", title: t("prefBookings", locale), message: t("myBookingsHelp", locale) },
-    { id: "notice-inquiry", title: t("prefInquiries", locale), message: t("inquiryListHelp", locale) },
-    { id: "notice-payment", title: t("prefPayments", locale), message: t("paymentHistoryHelp", locale) },
-  ];
+  const notifications: Array<{ id: string; title: string; message: string }> = [];
   const filtered = notifications.filter((item) => `${item.title} ${item.message}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="page-stack"><PageHeading title={t("notificationsTitle", locale)} description={t("sampleStaticContent", locale)} /><label className="label" htmlFor="customer-notice-search">{t("search", locale)}</label><input id="customer-notice-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder", locale)} />
-    <ListState locale={locale} items={filtered.length} loading={loading} noResults={Boolean(query)} emptyKey="emptyNotifications"><div className="stacked-list">{filtered.map((item) => <article className="card notification-card" key={item.id}><Bell size={17} aria-hidden="true" /><div><h2>{item.title}</h2><p>{item.message}</p><span className="tag">{t("sample", locale)}</span></div></article>)}</div></ListState>
+  return <div className="page-stack"><PageHeading title={t("notificationsTitle", locale)} /><label className="label" htmlFor="customer-notice-search">{t("search", locale)}</label><input id="customer-notice-search" className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder", locale)} />
+    <ListState locale={locale} items={filtered.length} loading={loading} noResults={Boolean(query)} emptyKey="emptyNotifications"><div className="stacked-list">{filtered.map((item) => <article className="card notification-card" key={item.id}><Bell size={17} aria-hidden="true" /><div><h2>{item.title}</h2><p>{item.message}</p></div></article>)}</div></ListState>
   </div>;
 }
 
