@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Building2,
   DoorOpen,
@@ -74,11 +75,15 @@ interface SupportTicketItem {
 
 type TabKey = "overview" | "onboard" | "tickets" | "audit" | "simulator";
 
-export default function SuperAdminPage() {
+function SuperAdminContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Overview stats
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -123,21 +128,24 @@ export default function SuperAdminPage() {
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // 1. Initial Load: check session & sync hash
+  // 1. Initial Load: check session
   useEffect(() => {
     fetchSession();
-
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace("#", "") as TabKey;
-      if (["overview", "onboard", "tickets", "audit", "simulator"].includes(hash)) {
-        setActiveTab(hash);
-      }
-    };
-
-    handleHashChange();
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  // 2. Sync tab state reactively with URL ?tab= query parameter or legacy #hash
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as TabKey | null;
+    if (tabParam && ["overview", "onboard", "tickets", "audit", "simulator"].includes(tabParam)) {
+      setActiveTab(tabParam);
+      return;
+    }
+
+    const hash = window.location.hash.replace("#", "") as TabKey;
+    if (["overview", "onboard", "tickets", "audit", "simulator"].includes(hash)) {
+      setActiveTab(hash);
+    }
+  }, [searchParams]);
 
   // When account changes to super_admin, load dashboard data
   useEffect(() => {
@@ -150,7 +158,7 @@ export default function SuperAdminPage() {
 
   const switchTab = (tab: TabKey) => {
     setActiveTab(tab);
-    window.location.hash = tab;
+    router.push(`/admin?tab=${tab}`);
   };
 
   const fetchSession = async () => {
@@ -412,131 +420,157 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: "100%", paddingBottom: "3rem" }}>
-      {/* Top Console Bar */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "1rem",
-          marginBottom: "1.5rem",
-          paddingBottom: "1rem",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-            <span className="pill" style={{ background: "rgba(13, 93, 86, 0.12)", color: "var(--teal)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
-              Platform Operations
+    <div className="admin-shell">
+      {/* 1. Full-Height 100vh Left Sidebar Frame */}
+      <aside className={`admin-frame-sidebar ${mobileSidebarOpen ? "is-open" : ""}`}>
+        {/* Brand Lockup Header */}
+        <div className="admin-frame-sidebar-header">
+          <Link
+            href="/admin"
+            className="brand-lockup"
+            style={{ textDecoration: "none" }}
+            onClick={() => setMobileSidebarOpen(false)}
+          >
+            <span className="brand-mark" aria-hidden="true">
+              <span />
+              <span />
             </span>
-            <span style={{ fontSize: "12px", color: "var(--muted)" }}>• Production Console</span>
-          </div>
-          <h1 style={{ fontSize: "1.65rem", fontWeight: 800, margin: 0, letterSpacing: "-0.03em" }}>
-            Addis Venue Marketplace Oversight
-          </h1>
+            <span>
+              <strong>Addis Gathering</strong>
+              <small style={{ color: "var(--teal)", fontWeight: 700 }}>Admin Console</small>
+            </span>
+          </Link>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+        {/* Primary Navigation */}
+        <nav className="admin-frame-nav">
+          <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "6px 12px 4px" }}>
+            Platform Operations
+          </span>
+
           <button
             type="button"
-            onClick={() => {
-              loadOverview();
-              loadAuditLogs();
-              loadTickets();
-            }}
-            disabled={overviewLoading || auditLoading || ticketsLoading}
-            className="btn btn-secondary"
-            style={{ fontSize: "12px", padding: "7px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+            onClick={() => { switchTab("overview"); setMobileSidebarOpen(false); }}
+            className={`admin-frame-nav-link ${activeTab === "overview" ? "active" : ""}`}
           >
-            <RotateCcw size={14} className={overviewLoading ? "animate-spin" : ""} />
-            <span>Refresh All Data</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <LayoutDashboard size={16} />
+              <span>Dashboard</span>
+            </div>
+            <ChevronRight size={14} style={{ opacity: activeTab === "overview" ? 0.9 : 0.3 }} />
           </button>
-          <Link href="/manager/venue" className="btn btn-secondary" style={{ fontSize: "12px", padding: "7px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
-            <Building2 size={14} /> Manager Workspace
-          </Link>
-          <Link href="/vendors" className="btn btn-secondary" style={{ fontSize: "12px", padding: "7px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
-            <Sparkles size={14} /> Vendors Directory
-          </Link>
-          <Link href="/" className="btn btn-secondary" style={{ fontSize: "12px", padding: "7px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
-            <ExternalLink size={14} /> Public Site
-          </Link>
-        </div>
-      </div>
 
-      {/* Global Status Message Toast */}
-      {statusMessage && (
-        <div
-          style={{
-            padding: "0.85rem 1.25rem",
-            borderRadius: "10px",
-            marginBottom: "1.5rem",
-            background: statusMessage.type === "success" ? "#ecfdf5" : "#fef2f2",
-            color: statusMessage.type === "success" ? "#065f46" : "#991b1b",
-            border: `1px solid ${statusMessage.type === "success" ? "#a7f3d0" : "#fecaca"}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "0.75rem",
-            fontSize: "0.9rem",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            {statusMessage.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span>{statusMessage.text}</span>
-          </div>
           <button
             type="button"
-            onClick={() => setStatusMessage(null)}
-            style={{ background: "transparent", border: 0, cursor: "pointer", color: "inherit", padding: "2px" }}
+            onClick={() => { switchTab("onboard"); setMobileSidebarOpen(false); }}
+            className={`admin-frame-nav-link ${activeTab === "onboard" ? "active" : ""}`}
           >
-            ✕
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <UserPlus size={16} />
+              <span>Partner Onboarding</span>
+            </div>
+            <span
+              style={{
+                fontSize: "10px",
+                padding: "2px 6px",
+                borderRadius: "999px",
+                background: activeTab === "onboard" ? "rgba(255,255,255,0.25)" : "var(--teal-soft)",
+                color: activeTab === "onboard" ? "#fff" : "var(--teal)",
+                fontWeight: 700,
+              }}
+            >
+              Workflow A
+            </span>
           </button>
-        </div>
-      )}
 
-      {/* Desktop 2-Column Dashboard Grid: Sidebar (260px) + Main Workspace Content */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "260px minmax(0, 1fr)",
-          gap: "24px",
-          alignItems: "start",
-        }}
-      >
-        {/* Left Sticky Desktop Sidebar */}
-        <aside
-          style={{
-            position: "sticky",
-            top: "92px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            background: "#fff",
-            border: "1px solid var(--line)",
-            borderRadius: "16px",
-            padding: "16px",
-            boxShadow: "0 6px 18px rgba(13,93,86,0.04)",
-          }}
-        >
-          {/* Admin Identity Lockup */}
-          <div
-            style={{
-              padding: "12px",
-              borderRadius: "12px",
-              background: "var(--teal-soft)",
-              border: "1px solid rgba(13,93,86,0.12)",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
+          <button
+            type="button"
+            onClick={() => { switchTab("tickets"); setMobileSidebarOpen(false); }}
+            className={`admin-frame-nav-link ${activeTab === "tickets" ? "active" : ""}`}
           >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Ticket size={16} />
+              <span>Support Tickets</span>
+            </div>
+            {openTicketsCount > 0 ? (
+              <span
+                style={{
+                  fontSize: "11px",
+                  padding: "1px 7px",
+                  borderRadius: "999px",
+                  background: activeTab === "tickets" ? "#fff" : "#f59e0b",
+                  color: activeTab === "tickets" ? "#d97706" : "#fff",
+                  fontWeight: 700,
+                }}
+              >
+                {openTicketsCount}
+              </span>
+            ) : (
+              <ChevronRight size={14} style={{ opacity: activeTab === "tickets" ? 0.9 : 0.3 }} />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { switchTab("audit"); setMobileSidebarOpen(false); }}
+            className={`admin-frame-nav-link ${activeTab === "audit" ? "active" : ""}`}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <FileText size={16} />
+              <span>Audit Log Trail</span>
+            </div>
+            <span
+              style={{
+                fontSize: "11px",
+                padding: "1px 6px",
+                borderRadius: "999px",
+                background: activeTab === "audit" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.06)",
+                color: activeTab === "audit" ? "#fff" : "var(--muted)",
+                fontWeight: 600,
+              }}
+            >
+              {overview?.auditLogsCount ?? 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { switchTab("simulator"); setMobileSidebarOpen(false); }}
+            className={`admin-frame-nav-link ${activeTab === "simulator" ? "active" : ""}`}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Send size={16} />
+              <span>Ticket Simulator</span>
+            </div>
+            <ChevronRight size={14} style={{ opacity: activeTab === "simulator" ? 0.9 : 0.3 }} />
+          </button>
+
+          <div style={{ marginTop: "16px", borderTop: "1px solid var(--line)", paddingTop: "14px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "0 12px 4px" }}>
+              System Integrity
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 12px", fontSize: "11px", color: "#065f46" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+              <span>PostgreSQL Invariants Active</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 12px", fontSize: "11px", color: "var(--muted)" }}>
+              <Lock size={12} />
+              <span>Append-Only Audit Enforced</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 12px", fontSize: "11px", color: "var(--muted)" }}>
+              <ShieldCheck size={12} style={{ color: "var(--teal)" }} />
+              <span>Double-Booking Prevention</span>
+            </div>
+          </div>
+        </nav>
+
+        {/* Sidebar Footer with Identity */}
+        <div className="admin-frame-sidebar-footer">
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
             <div
               style={{
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 borderRadius: "10px",
                 background: "var(--teal)",
                 color: "#fff",
@@ -558,367 +592,445 @@ export default function SuperAdminPage() {
             </div>
           </div>
 
-          {/* Navigation Section */}
-          <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 8px 6px" }}>
-              Workspaces & Tools
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="btn btn-secondary full-width"
+            style={{ fontSize: "12px", padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+          >
+            <LogOut size={14} /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="mobile-nav-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+          style={{ zIndex: 30 }}
+        />
+      )}
+
+      {/* 2. Top Utility Bar (Margin-left: 260px) */}
+      <header className="admin-frame-topbar">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button
+            type="button"
+            className="mobile-nav-toggle btn btn-secondary"
+            onClick={() => setMobileSidebarOpen((v) => !v)}
+            style={{ padding: "6px 8px" }}
+            aria-label="Toggle navigation drawer"
+          >
+            <LayoutDashboard size={18} />
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>
+              Admin Console
             </span>
+            <span style={{ color: "var(--muted)", fontSize: "13px" }}>/</span>
+            <span style={{ fontSize: "13px", color: "var(--teal)", fontWeight: 600 }}>
+              {activeTab === "overview" && "Dashboard & Operations"}
+              {activeTab === "onboard" && "Partner Onboarding"}
+              {activeTab === "tickets" && "Support Tickets Queue"}
+              {activeTab === "audit" && "Audit Log Trail"}
+              {activeTab === "simulator" && "Ticket Simulator"}
+            </span>
+          </div>
+        </div>
 
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => {
+              loadOverview();
+              loadAuditLogs();
+              loadTickets();
+            }}
+            disabled={overviewLoading || auditLoading || ticketsLoading}
+            className="btn btn-secondary"
+            style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <RotateCcw size={13} className={overviewLoading ? "animate-spin" : ""} />
+            <span>Refresh All Data</span>
+          </button>
+
+          <Link
+            href="/manager/venue"
+            className="btn btn-secondary"
+            style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+          >
+            <Building2 size={13} />
+            <span>Manager Workspace</span>
+          </Link>
+
+          <Link
+            href="/vendors"
+            className="btn btn-secondary"
+            style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+          >
+            <Sparkles size={13} />
+            <span>Vendors Directory</span>
+          </Link>
+
+          <Link
+            href="/venues"
+            target="_blank"
+            className="btn btn-secondary"
+            style={{ fontSize: "12px", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+          >
+            <ExternalLink size={13} />
+            <span>Public Site</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* 3. Main Content Canvas */}
+      <main className="admin-frame-content">
+        {/* Global Status Message Toast */}
+        {statusMessage && (
+          <div
+            style={{
+              padding: "0.85rem 1.25rem",
+              borderRadius: "10px",
+              marginBottom: "1.5rem",
+              background: statusMessage.type === "success" ? "#ecfdf5" : "#fef2f2",
+              color: statusMessage.type === "success" ? "#065f46" : "#991b1b",
+              border: `1px solid ${statusMessage.type === "success" ? "#a7f3d0" : "#fecaca"}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.75rem",
+              fontSize: "0.9rem",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              {statusMessage.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              <span>{statusMessage.text}</span>
+            </div>
             <button
               type="button"
-              onClick={() => switchTab("overview")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: 0,
-                cursor: "pointer",
-                background: activeTab === "overview" ? "var(--teal)" : "transparent",
-                color: activeTab === "overview" ? "#fff" : "var(--ink)",
-                fontWeight: activeTab === "overview" ? 700 : 500,
-                fontSize: "13px",
-                textAlign: "left",
-                transition: "all 0.15s ease",
-              }}
+              onClick={() => setStatusMessage(null)}
+              style={{ background: "transparent", border: 0, cursor: "pointer", color: "inherit", padding: "2px" }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                <LayoutDashboard size={16} />
-                <span>Overview & Pulse</span>
-              </div>
-              <ChevronRight size={14} style={{ opacity: activeTab === "overview" ? 0.9 : 0.3 }} />
+              ✕
             </button>
+          </div>
+        )}
 
-            <button
-              type="button"
-              onClick={() => switchTab("onboard")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: 0,
-                cursor: "pointer",
-                background: activeTab === "onboard" ? "var(--teal)" : "transparent",
-                color: activeTab === "onboard" ? "#fff" : "var(--ink)",
-                fontWeight: activeTab === "onboard" ? 700 : 500,
-                fontSize: "13px",
-                textAlign: "left",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                <UserPlus size={16} />
-                <span>Partner Onboarding</span>
+        {/* TAB 1: OVERVIEW & PULSE */}
+        {activeTab === "overview" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {/* Layer 1: Header Block */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <span className="pill" style={{ background: "rgba(13, 93, 86, 0.12)", color: "var(--teal)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
+                  Platform Operations
+                </span>
+                <span style={{ fontSize: "12px", color: "var(--muted)" }}>• Production Console</span>
               </div>
-              <span
+              <h1 style={{ fontSize: "1.85rem", fontWeight: 800, margin: 0, letterSpacing: "-0.03em", color: "var(--ink)" }}>
+                Addis Venue Marketplace Oversight
+              </h1>
+              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "0.95rem" }}>
+                Real-time marketplace pulse, active bookings pipeline, and immutable cryptotrail at a glance.
+              </p>
+            </div>
+
+            {/* Layer 2: 5-Card High-Density KPI Strip */}
+            <section className="admin-kpi-strip">
+              {/* Total Venues Card */}
+              <div
+                className="card"
+                onClick={() => switchTab("overview")}
                 style={{
-                  fontSize: "10px",
-                  padding: "2px 6px",
-                  borderRadius: "999px",
-                  background: activeTab === "onboard" ? "rgba(255,255,255,0.25)" : "var(--teal-soft)",
-                  color: activeTab === "onboard" ? "#fff" : "var(--teal)",
-                  fontWeight: 700,
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  background: "#fff",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
                 }}
               >
-                Workflow A
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchTab("tickets")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: 0,
-                cursor: "pointer",
-                background: activeTab === "tickets" ? "var(--teal)" : "transparent",
-                color: activeTab === "tickets" ? "#fff" : "var(--ink)",
-                fontWeight: activeTab === "tickets" ? 700 : 500,
-                fontSize: "13px",
-                textAlign: "left",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                <Ticket size={16} />
-                <span>Support Tickets</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Venues
+                  </span>
+                  <div style={{ width: 30, height: 30, borderRadius: "8px", background: "var(--teal-soft)", color: "var(--teal)", display: "grid", placeItems: "center" }}>
+                    <Building2 size={16} />
+                  </div>
+                </div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+                  {overview?.venuesCount ?? 0}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
+                  Registered marketplace partners
+                </div>
               </div>
-              {openTicketsCount > 0 ? (
-                <span
-                  style={{
-                    fontSize: "11px",
-                    padding: "1px 7px",
-                    borderRadius: "999px",
-                    background: activeTab === "tickets" ? "#fff" : "#f59e0b",
-                    color: activeTab === "tickets" ? "#d97706" : "#fff",
-                    fontWeight: 700,
-                  }}
+
+              {/* Total Halls Card */}
+              <div
+                className="card"
+                onClick={() => switchTab("overview")}
+                style={{
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  background: "#fff",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Bookable Halls
+                  </span>
+                  <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(59, 130, 246, 0.1)", color: "#2563eb", display: "grid", placeItems: "center" }}>
+                    <DoorOpen size={16} />
+                  </div>
+                </div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+                  {overview?.hallsCount ?? 0}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
+                  Active bookable spaces
+                </div>
+              </div>
+
+              {/* Total Bookings Card */}
+              <div
+                className="card"
+                onClick={() => switchTab("overview")}
+                style={{
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  background: "#fff",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Bookings
+                  </span>
+                  <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(139, 92, 246, 0.1)", color: "#7c3aed", display: "grid", placeItems: "center" }}>
+                    <Calendar size={16} />
+                  </div>
+                </div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+                  {overview?.bookingsCount ?? 0}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
+                  <span>Req: {overview?.bookingsByStatus?.requested ?? 0}</span> •{" "}
+                  <span style={{ color: "#059669", fontWeight: 600 }}>Conf: {overview?.bookingsByStatus?.confirmed ?? 0}</span> •{" "}
+                  <span>Canc: {overview?.bookingsByStatus?.cancelled ?? 0}</span>
+                </div>
+              </div>
+
+              {/* Support Tickets Card */}
+              <div
+                className="card"
+                onClick={() => switchTab("tickets")}
+                style={{
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  background: "#fff",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Tickets
+                  </span>
+                  <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(245, 158, 11, 0.12)", color: "#d97706", display: "grid", placeItems: "center" }}>
+                    <Ticket size={16} />
+                  </div>
+                </div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+                  {overview?.ticketsCount ?? 0}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
+                  <span style={{ color: "#d97706", fontWeight: 700 }}>Open: {openTicketsCount}</span> •{" "}
+                  <span>Prog: {inProgressTicketsCount}</span> •{" "}
+                  <span style={{ color: "#059669" }}>Res: {overview?.ticketsByStatus?.resolved ?? 0}</span>
+                </div>
+              </div>
+
+              {/* Audit Events Card */}
+              <div
+                className="card"
+                onClick={() => switchTab("audit")}
+                style={{
+                  padding: "16px",
+                  border: "1px solid var(--line)",
+                  background: "#fff",
+                  borderRadius: "14px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Audit Events
+                  </span>
+                  <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(16, 185, 129, 0.1)", color: "#059669", display: "grid", placeItems: "center" }}>
+                    <FileText size={16} />
+                  </div>
+                </div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+                  {overview?.auditLogsCount ?? 0}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
+                  Immutable cryptotrail events
+                </div>
+              </div>
+            </section>
+
+            {/* Layer 3: Quick Action Buttons Strip */}
+            <div className="admin-actions-strip">
+              <button
+                type="button"
+                onClick={() => switchTab("onboard")}
+                className="btn btn-primary"
+                style={{ fontSize: "13px", padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <UserPlus size={15} />
+                <span>+ Onboard Partner Venue</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => switchTab("simulator")}
+                className="btn btn-secondary"
+                style={{ fontSize: "13px", padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <Send size={15} />
+                <span>Ingest Support Ticket</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => switchTab("audit")}
+                className="btn btn-secondary"
+                style={{ fontSize: "13px", padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <FileText size={15} />
+                <span>Filter Audit Trail</span>
+              </button>
+
+              <Link
+                href="/venues"
+                target="_blank"
+                className="btn btn-secondary"
+                style={{ fontSize: "13px", padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <ExternalLink size={15} />
+                <span>Preview Public Catalog ↗</span>
+              </Link>
+            </div>
+
+            {/* Layer 4: Live Operational Pipeline Stepper */}
+            <div className="admin-pipeline-card">
+              <div className="admin-pipeline-header">
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
+                      Live Operational Pipeline
+                    </span>
+                    <span className="pill" style={{ background: "rgba(16, 185, 129, 0.12)", color: "#065f46", fontSize: "10px", fontWeight: 700 }}>
+                      • Invariants Active
+                    </span>
+                  </div>
+                  <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "var(--ink)" }}>
+                    Double-Booking Prevention & Booking State Machine
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => switchTab("audit")}
+                  className="text-link"
+                  style={{ fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "4px" }}
                 >
-                  {openTicketsCount}
-                </span>
-              ) : (
-                <ChevronRight size={14} style={{ opacity: activeTab === "tickets" ? 0.9 : 0.3 }} />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchTab("audit")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: 0,
-                cursor: "pointer",
-                background: activeTab === "audit" ? "var(--teal)" : "transparent",
-                color: activeTab === "audit" ? "#fff" : "var(--ink)",
-                fontWeight: activeTab === "audit" ? 700 : 500,
-                fontSize: "13px",
-                textAlign: "left",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                <FileText size={16} />
-                <span>Audit Log Trail</span>
+                  <span>Inspect Audit Records</span>
+                  <ArrowRight size={13} />
+                </button>
               </div>
-              <span
+
+              {/* Stepper Track */}
+              <div className="admin-stepper-track">
+                <div className="admin-stepper-step completed">
+                  <div className="admin-stepper-circle">
+                    <Check size={16} />
+                  </div>
+                  <span className="admin-stepper-label">1. Requested</span>
+                  <span className="admin-stepper-sub">Customer booking intent submitted</span>
+                </div>
+
+                <div className="admin-stepper-step active">
+                  <div className="admin-stepper-circle">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <span className="admin-stepper-label">2. Confirmed</span>
+                  <span className="admin-stepper-sub">Advisory Lock & Exclusion Enforced</span>
+                </div>
+
+                <div className="admin-stepper-step completed">
+                  <div className="admin-stepper-circle">
+                    <Check size={16} />
+                  </div>
+                  <span className="admin-stepper-label">3. Invoiced</span>
+                  <span className="admin-stepper-sub">Payment slip generated</span>
+                </div>
+
+                <div className="admin-stepper-step completed">
+                  <div className="admin-stepper-circle">
+                    <Check size={16} />
+                  </div>
+                  <span className="admin-stepper-label">4. Settled</span>
+                  <span className="admin-stepper-sub">Telebirr / CBE payment verified</span>
+                </div>
+
+                <div className="admin-stepper-step">
+                  <div className="admin-stepper-circle">
+                    5
+                  </div>
+                  <span className="admin-stepper-label">5. Completed</span>
+                  <span className="admin-stepper-sub">Event held & cryptotrail sealed</span>
+                </div>
+              </div>
+
+              <div
                 style={{
-                  fontSize: "11px",
-                  padding: "1px 6px",
-                  borderRadius: "999px",
-                  background: activeTab === "audit" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.06)",
-                  color: activeTab === "audit" ? "#fff" : "var(--muted)",
-                  fontWeight: 600,
+                  marginTop: "16px",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  fontSize: "12px",
+                  color: "#166534",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                {overview?.auditLogsCount ?? 0}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchTab("simulator")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: 0,
-                cursor: "pointer",
-                background: activeTab === "simulator" ? "var(--teal)" : "transparent",
-                color: activeTab === "simulator" ? "#fff" : "var(--ink)",
-                fontWeight: activeTab === "simulator" ? 700 : 500,
-                fontSize: "13px",
-                textAlign: "left",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                <Send size={16} />
-                <span>Ticket Simulator</span>
-              </div>
-              <ChevronRight size={14} style={{ opacity: activeTab === "simulator" ? 0.9 : 0.3 }} />
-            </button>
-          </nav>
-
-          <div style={{ borderTop: "1px solid var(--line)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
-            <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "0 8px 4px" }}>
-              System Health
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", fontSize: "11px", color: "#065f46" }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-              <span>PostgreSQL • Invariants Active</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", fontSize: "11px", color: "var(--muted)" }}>
-              <Lock size={12} />
-              <span>Append-Only Audit Enforced</span>
-            </div>
-          </div>
-
-          <div style={{ borderTop: "1px solid var(--line)", paddingTop: "12px" }}>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="btn btn-secondary full-width"
-              style={{ fontSize: "12px", padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-            >
-              <LogOut size={14} /> Sign Out
-            </button>
-          </div>
-        </aside>
-
-        {/* Right Main Content Pane */}
-        <main style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Top 5-Column High-Density KPI Strip */}
-          <section className="admin-kpi-strip">
-            {/* Total Venues Card */}
-            <div
-              className="card"
-              onClick={() => switchTab("overview")}
-              style={{
-                padding: "16px",
-                border: "1px solid var(--line)",
-                background: "#fff",
-                borderRadius: "14px",
-                cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
-                transition: "transform 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Venues
+                <Lock size={14} style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Concurrency Guarantee:</strong> PostgreSQL advisory transaction locks with GiST date-range exclusion constraints active across all 29 bookable spaces. Zero double-booking tolerance.
                 </span>
-                <div style={{ width: 30, height: 30, borderRadius: "8px", background: "var(--teal-soft)", color: "var(--teal)", display: "grid", placeItems: "center" }}>
-                  <Building2 size={16} />
-                </div>
-              </div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
-                {overview?.venuesCount ?? 0}
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
-                Registered marketplace partners
               </div>
             </div>
 
-            {/* Total Halls Card */}
-            <div
-              className="card"
-              onClick={() => switchTab("overview")}
-              style={{
-                padding: "16px",
-                border: "1px solid var(--line)",
-                background: "#fff",
-                borderRadius: "14px",
-                cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
-                transition: "transform 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Bookable Halls
-                </span>
-                <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(59, 130, 246, 0.1)", color: "#2563eb", display: "grid", placeItems: "center" }}>
-                  <DoorOpen size={16} />
-                </div>
-              </div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
-                {overview?.hallsCount ?? 0}
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
-                Active bookable spaces
-              </div>
-            </div>
-
-            {/* Total Bookings Card */}
-            <div
-              className="card"
-              onClick={() => switchTab("overview")}
-              style={{
-                padding: "16px",
-                border: "1px solid var(--line)",
-                background: "#fff",
-                borderRadius: "14px",
-                cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
-                transition: "transform 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Bookings
-                </span>
-                <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(139, 92, 246, 0.1)", color: "#7c3aed", display: "grid", placeItems: "center" }}>
-                  <Calendar size={16} />
-                </div>
-              </div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
-                {overview?.bookingsCount ?? 0}
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
-                <span>Req: {overview?.bookingsByStatus?.requested ?? 0}</span> •{" "}
-                <span style={{ color: "#059669", fontWeight: 600 }}>Conf: {overview?.bookingsByStatus?.confirmed ?? 0}</span> •{" "}
-                <span>Canc: {overview?.bookingsByStatus?.cancelled ?? 0}</span>
-              </div>
-            </div>
-
-            {/* Support Tickets Card */}
-            <div
-              className="card"
-              onClick={() => switchTab("tickets")}
-              style={{
-                padding: "16px",
-                border: "1px solid var(--line)",
-                background: "#fff",
-                borderRadius: "14px",
-                cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
-                transition: "transform 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Tickets
-                </span>
-                <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(245, 158, 11, 0.12)", color: "#d97706", display: "grid", placeItems: "center" }}>
-                  <Ticket size={16} />
-                </div>
-              </div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
-                {overview?.ticketsCount ?? 0}
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
-                <span style={{ color: "#d97706", fontWeight: 700 }}>Open: {openTicketsCount}</span> •{" "}
-                <span>Prog: {inProgressTicketsCount}</span> •{" "}
-                <span style={{ color: "#059669" }}>Res: {overview?.ticketsByStatus?.resolved ?? 0}</span>
-              </div>
-            </div>
-
-            {/* Audit Events Card */}
-            <div
-              className="card"
-              onClick={() => switchTab("audit")}
-              style={{
-                padding: "16px",
-                border: "1px solid var(--line)",
-                background: "#fff",
-                borderRadius: "14px",
-                cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.02)",
-                transition: "transform 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Audit Events
-                </span>
-                <div style={{ width: 30, height: 30, borderRadius: "8px", background: "rgba(16, 185, 129, 0.1)", color: "#059669", display: "grid", placeItems: "center" }}>
-                  <FileText size={16} />
-                </div>
-              </div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
-                {overview?.auditLogsCount ?? 0}
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: "6px" }}>
-                Immutable cryptotrail events
-              </div>
-            </div>
-          </section>
-
-          {/* TAB 1: OVERVIEW & PULSE */}
-          {activeTab === "overview" && (
+            {/* Layer 5: High-Density Data Tables */}
             <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "20px" }}>
               {/* Left Column: Recent Support Ticket Queue */}
               <div className="card" style={{ padding: "20px", background: "#fff", border: "1px solid var(--line)", borderRadius: "14px" }}>
@@ -1132,7 +1244,8 @@ export default function SuperAdminPage() {
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* TAB 2: PARTNER ONBOARDING (WORKFLOW A) */}
           {activeTab === "onboard" && (
@@ -1751,8 +1864,15 @@ export default function SuperAdminPage() {
               </form>
             </div>
           )}
-        </main>
-      </div>
+      </main>
     </div>
+  );
+}
+
+export default function SuperAdminPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: "3rem", textAlign: "center", color: "var(--muted)" }}>Loading Admin Console...</div>}>
+      <SuperAdminContent />
+    </Suspense>
   );
 }

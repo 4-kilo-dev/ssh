@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { DemoProvider } from "@/lib/store";
+import { SessionProvider } from "@/components/SessionProvider";
 import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <DemoProvider>
-          <AppShell>{children}</AppShell>
+          <SessionProvider>
+            <AppShell>{children}</AppShell>
+          </SessionProvider>
         </DemoProvider>
       </body>
     </html>
