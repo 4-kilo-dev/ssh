@@ -1003,10 +1003,10 @@ export default function ManagerVenuePage() {
           <div>
             <p className="eyebrow">
               <Building2 size={14} aria-hidden="true" />
-              <span>Manager Workspace • Phase 3, 4, 5 & 6</span>
+              <span>Venue workspace</span>
             </p>
             <h1>Venue & Hall Management</h1>
-            <p>Manage your venue profile, define bookable halls, and verify the double-booking exclusion constraint.</p>
+            <p>Manage your venue profile, bookable spaces, and reservation calendar.</p>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <Link href="/vendors" className="btn btn-outline" style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -2066,7 +2066,7 @@ export default function ManagerVenuePage() {
                       Schedule & Blocks for {selectedHall.name}
                     </h4>
                     <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--muted)" }}>
-                      Phase 4 derived availability and Postgres exclusion constraint verification.
+                      View booked slots and maintain availability blocks for this hall.
                     </p>
                   </div>
 
@@ -2505,9 +2505,9 @@ export default function ManagerVenuePage() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
               <Users size={20} style={{ color: "var(--teal)" }} />
               <div>
-                <h3 style={{ margin: 0, fontSize: "17px" }}>Customer Booking Request Simulator (Phase 5)</h3>
+                <h3 style={{ margin: 0, fontSize: "17px" }}>Test booking request</h3>
                 <p style={{ margin: "2px 0 0", fontSize: "13px", color: "var(--muted)" }}>
-                  Submit a multi-hall booking request as a customer to test atomic reservation and double-booking collision defense.
+                  Submit a multi-space booking request as a customer to verify reservation and confirmation flows.
                 </p>
               </div>
             </div>
