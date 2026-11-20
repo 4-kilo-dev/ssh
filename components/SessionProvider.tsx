@@ -18,6 +18,8 @@ interface SessionContextValue {
   status: SessionStatus;
   /** Re-validate the session against the server (e.g. after login or logout). */
   refresh: () => Promise<void>;
+  /** Apply an account returned by a successful sign-in before revalidating it. */
+  adopt: (account: SessionAccount) => void;
   /** Clear the cached session locally without a network round-trip. */
   clear: () => void;
 }
@@ -72,8 +74,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
+  const adopt = useCallback((nextAccount: SessionAccount) => {
+    setAccount(nextAccount);
+    setStatus("authenticated");
+  }, []);
+
   return (
-    <SessionContext.Provider value={{ account, status, refresh: load, clear }}>
+    <SessionContext.Provider value={{ account, status, refresh: load, adopt, clear }}>
       {children}
     </SessionContext.Provider>
   );

@@ -38,7 +38,7 @@ function getRoleRedirectPath(role?: string): string {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refresh: refreshSession } = useSession();
+  const { refresh: refreshSession, adopt: adoptSession } = useSession();
   const [phone, setPhone] = useState("+251911000000");
   const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
@@ -79,6 +79,7 @@ export default function LoginPage() {
 
       setAccount(data.account);
       setPassword("");
+      adoptSession(data.account);
       await refreshSession();
 
       // Automatically route to their respective homepage by role
