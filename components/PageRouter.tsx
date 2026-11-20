@@ -51,7 +51,9 @@ export function PageRouter() {
 
   if (customerOnly && sessionStatus === "checking") return <section className="card"><h1>Connecting your account…</h1><p>Loading your backend account and customer data.</p></section>;
   if (customerOnly && sessionStatus === "unauthenticated") return <section className="card access-denied"><LockKeyhole size={27} aria-hidden="true" /><h1>Sign in required</h1><p>Sign in to view your bookings, inquiries, payments, and profile.</p><Link className="btn btn-primary" href="/login">Sign in <ArrowRight size={16} aria-hidden="true" /></Link></section>;
-  const forbidden = (pathname.startsWith("/admin") && role !== "admin" && pathname !== "/admin/login") || (pathname.startsWith("/vendor") && role !== "vendor" && pathname !== "/vendor/sign-in" && pathname !== "/vendor/apply") || (customerOnly && role !== "customer");
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isVendorWorkspaceRoute = pathname === "/vendor" || pathname.startsWith("/vendor/");
+  const forbidden = (isAdminRoute && role !== "admin" && pathname !== "/admin/login") || (isVendorWorkspaceRoute && role !== "vendor" && pathname !== "/vendor/sign-in" && pathname !== "/vendor/apply") || (customerOnly && role !== "customer");
   if (forbidden) return <section className="card access-denied"><LockKeyhole size={27} aria-hidden="true" /><h1>{t("accessDenied", locale)}</h1><p>You do not have permission to view this page.</p><Link className="btn btn-primary" href="/">{t("backHome", locale)} <ArrowRight size={16} aria-hidden="true" /></Link></section>;
   if (pathname === "/") return <LandingPage />;
   if (pathname === "/vendor/sign-in") return <VendorSignInPreview />;
