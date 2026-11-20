@@ -23,7 +23,8 @@ export function TgBottomNav() {
   return <nav className="tg-bottomnav" aria-label={t("ariaNavigation", locale)}>
     {tabs.map(({ href, key, Icon }) => {
       const active = href === "/" ? logical === "/" : logical === href || logical.startsWith(`${href}/`);
-      return <Link key={href} href={href} className="tg-navitem" aria-current={active ? "page" : undefined}>
+      const target = href === "/" ? "/tg" : `/tg${href}`;
+      return <Link key={href} href={target} className="tg-navitem" aria-current={active ? "page" : undefined}>
         <Icon size={21} aria-hidden="true" />
         <span>{t(key, locale)}</span>
       </Link>;
