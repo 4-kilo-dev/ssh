@@ -1,9 +1,7 @@
-import { Suspense } from "react";
-import { PageRouter } from "@/components/PageRouter";
-import { LocaleLoading } from "@/components/LocaleLoading";
+import { DemoControls } from "@/components/DemoControls";
 
 export const dynamic = "force-dynamic";
 
 export default function DemoPage() {
-  return <Suspense fallback={<LocaleLoading />}><PageRouter /></Suspense>;
+  return <DemoControls />;
 }

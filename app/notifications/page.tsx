@@ -1,9 +1,12 @@
-import { Suspense } from "react";
-import { PageRouter } from "@/components/PageRouter";
-import { LocaleLoading } from "@/components/LocaleLoading";
+import { CustomerGate } from "@/components/AuthGate";
+import { CustomerNotifications } from "@/components/CustomerExtras";
 
 export const dynamic = "force-dynamic";
 
 export default function NotificationsPage() {
-  return <Suspense fallback={<LocaleLoading />}><PageRouter /></Suspense>;
+  return (
+    <CustomerGate>
+      <CustomerNotifications />
+    </CustomerGate>
+  );
 }

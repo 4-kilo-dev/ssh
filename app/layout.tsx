@@ -3,6 +3,7 @@ import "./globals.css";
 import { DemoProvider } from "@/lib/store";
 import { SessionProvider } from "@/components/SessionProvider";
 import { AppShell } from "@/components/AppShell";
+import { DataHydrator } from "@/components/DataHydrator";
 
 export const metadata: Metadata = {
   title: "Addis Gathering | Find your place in Addis Ababa",
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <DemoProvider>
           <SessionProvider>
+            <DataHydrator />
             <AppShell>{children}</AppShell>
           </SessionProvider>
         </DemoProvider>

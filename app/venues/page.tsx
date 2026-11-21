@@ -1,9 +1,7 @@
-import { Suspense } from "react";
-import { PageRouter } from "@/components/PageRouter";
-import { LocaleLoading } from "@/components/LocaleLoading";
+import { VenueBrowserGate } from "@/components/venues-v2/VenueBrowserGates";
 
 export const dynamic = "force-dynamic";
 
 export default function VenuesPage() {
-  return <Suspense fallback={<LocaleLoading />}><PageRouter /></Suspense>;
+  return <VenueBrowserGate />;
 }
